@@ -3,6 +3,7 @@
 namespace Tests;
 
 use App\Services\ImageGeneration\Providers\FakeImageGenerator;
+use App\Services\Payment\Providers\FakePaymentGateway;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Laravel\Fortify\Features;
@@ -20,6 +21,7 @@ abstract class TestCase extends BaseTestCase
 
         // Fake adapters keep state in statics, so each test starts clean.
         FakeImageGenerator::flush();
+        FakePaymentGateway::flush();
     }
 
     protected function skipUnlessFortifyHas(string $feature, ?string $message = null): void

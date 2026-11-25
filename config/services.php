@@ -34,6 +34,12 @@ return [
         'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
     ],
 
+    'stripe' => [
+        // Test-mode keys (sk_test_, whsec_) keep every payment in the Stripe sandbox.
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
