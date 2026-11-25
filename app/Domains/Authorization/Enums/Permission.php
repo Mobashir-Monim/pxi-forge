@@ -24,8 +24,13 @@ enum Permission: string
 
     case ReferencesUpload = 'references.upload';
 
+    case CreditsView = 'credits.view';
+    case CreditsPurchase = 'credits.purchase';
+
+    case ReportsView = 'reports.view';
+
     /** What every member can do from the start. Seeded once, editable after. */
-    public const array MEMBER_DEFAULTS = [self::ChatsView, self::GenerationsCreate, self::GenerationsRetry, self::ReferencesUpload];
+    public const array MEMBER_DEFAULTS = [self::ChatsView, self::GenerationsCreate, self::GenerationsRetry, self::ReferencesUpload, self::CreditsView, self::CreditsPurchase];
 
     /** The heading this permission is listed under on the role form. */
     public function group(): string
@@ -46,6 +51,9 @@ enum Permission: string
             self::GenerationsCreate => 'Generate images',
             self::GenerationsRetry => 'Retry failed generations',
             self::ReferencesUpload => 'Upload reference images',
+            self::CreditsView => 'See own credit balance',
+            self::CreditsPurchase => 'Buy credits',
+            self::ReportsView => 'View the spend and profit report',
         };
     }
 
@@ -62,6 +70,9 @@ enum Permission: string
             self::GenerationsCreate => 'Send prompts to the image generator and see cost estimates. Each image is charged to them.',
             self::GenerationsRetry => 'Send a failed generation again with the same settings.',
             self::ReferencesUpload => 'Upload images from their device to use as references.',
+            self::CreditsView => 'See how many credits they have left and how much is held for running images.',
+            self::CreditsPurchase => 'Buy credit packs through checkout.',
+            self::ReportsView => 'See what every user was charged, what Pixelforge charged us and the profit, per day and per user.',
         };
     }
 

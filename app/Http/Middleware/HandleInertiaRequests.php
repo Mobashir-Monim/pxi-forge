@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Billing\Actions\Command\BuyCredits;
+use App\Domains\Billing\Actions\Query\GetCreditBalance;
 use App\Domains\Generation\Models\Chat;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -51,6 +53,10 @@ class HandleInertiaRequests extends Middleware
                     ->map(fn (Chat $chat): array => ['id' => $chat->id, 'title' => $chat->title, 'archived' => $chat->isArchived()])
                     ->all()
                 : [],
+            // Lazy too, and fresh on every visit, so a finished image or a purchase shows in the balance straight away.
+            'credits' => fn (): ?array => $request->user()?->can(Permission::CreditsView->value)
+                ? [...GetCreditBalance::run($request->user()), 'packs' => BuyCredits::PACKS_CENTS]
+                : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

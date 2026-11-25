@@ -7,6 +7,9 @@ use App\Domains\Authorization\Actions\Command\UpdateRole;
 use App\Domains\Authorization\Actions\Query\ListRoles;
 use App\Domains\Authorization\Actions\Query\ListUsers;
 use App\Domains\Authorization\Actions\Query\ShowRole;
+use App\Domains\Billing\Actions\Command\BuyCredits;
+use App\Domains\Billing\Actions\Command\ReturnFromCheckout;
+use App\Domains\Billing\Actions\Query\ShowSpendReport;
 use App\Domains\Generation\Actions\Command\RetryGeneration;
 use App\Domains\Generation\Actions\Command\SendGeneration;
 use App\Domains\Generation\Actions\Command\UploadReference;
@@ -36,6 +39,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('{role}', UpdateRole::class)->name('update');
         Route::delete('{role}', DeleteRole::class)->name('destroy');
     });
+
+    Route::post('credits/checkout', BuyCredits::class)->name('credits.checkout');
+    Route::get('credits/return', ReturnFromCheckout::class)->name('credits.return');
+
+    Route::get('reports', ShowSpendReport::class)->name('reports.index');
 
     Route::get('users', ListUsers::class)->name('users.index');
     Route::put('users/{user}/roles', AssignUserRoles::class)->name('users.roles.update');

@@ -3,6 +3,7 @@
 namespace App\Domains\Generation\Actions\Command;
 
 use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Billing\Actions\Query\GetCreditBalance;
 use App\Domains\Generation\Actions\Query\EstimateGenerationCost;
 use App\Domains\Generation\Enums\GenerationStatus;
 use App\Domains\Generation\Jobs\SubmitGeneration;
@@ -10,6 +11,7 @@ use App\Domains\Generation\Models\Generation;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -45,17 +47,21 @@ final class RetryGeneration
         $estimate = EstimateGenerationCost::run($failed->prompt, $failed->size, $failed->quality, count($failed->references));
 
         try {
-            $retry = $failed->chat->generations()->create([
-                'user_id' => $failed->user_id,
-                'retry_of_id' => $failed->id,
-                'message' => $failed->message,
-                'prompt' => $failed->prompt,
-                'size' => $failed->size,
-                'quality' => $failed->quality,
-                'references' => $failed->references,
-                'estimate_min_nd' => $estimate['min'],
-                'estimate_max_nd' => $estimate['max'],
-            ]);
+            $retry = DB::transaction(function () use ($failed, $estimate): Generation {
+                GetCreditBalance::ensureCanAfford($failed->user, $estimate['max']);
+
+                return $failed->chat->generations()->create([
+                    'user_id' => $failed->user_id,
+                    'retry_of_id' => $failed->id,
+                    'message' => $failed->message,
+                    'prompt' => $failed->prompt,
+                    'size' => $failed->size,
+                    'quality' => $failed->quality,
+                    'references' => $failed->references,
+                    'estimate_min_nd' => $estimate['min'],
+                    'estimate_max_nd' => $estimate['max'],
+                ]);
+            });
         } catch (UniqueConstraintViolationException) {
             // A double-clicked retry: the first one already made it, or the chat got busy in between.
             throw ValidationException::withMessages(['generation' => 'This generation was already retried.']);

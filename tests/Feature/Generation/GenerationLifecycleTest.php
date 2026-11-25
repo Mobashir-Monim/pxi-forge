@@ -25,7 +25,7 @@ beforeEach(function () {
 
 function generator(): User
 {
-    return userWith(...Permission::MEMBER_DEFAULTS);
+    return withCredits(userWith(...Permission::MEMBER_DEFAULTS));
 }
 
 /** @return array<string, mixed> */

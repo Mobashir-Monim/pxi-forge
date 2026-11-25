@@ -73,3 +73,13 @@ export function formatCharge(nanodollars: number): string {
         ? 'Free'
         : `$${(Math.round(nanodollars / 10_000_000) / 100).toFixed(2)}`;
 }
+
+/** An upper bound, rounded up to the cent so the user never sees less than it can cost. */
+export function formatUpTo(nanodollars: number): string {
+    return `$${(Math.ceil(nanodollars / 10_000_000) / 100).toFixed(2)}`;
+}
+
+/** Whole cents, rounded down, so a balance never shows more than the user can spend. */
+export function formatCredits(nanodollars: number): string {
+    return `$${(Math.floor(Math.max(nanodollars, 0) / 10_000_000) / 100).toFixed(2)}`;
+}

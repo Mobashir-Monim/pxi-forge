@@ -16,6 +16,8 @@ final class Money
 
     private const int NANO = 1_000_000_000;
 
+    private const int CENT = 10_000_000;
+
     /** What Pixelforge charged us for these tokens at these rates. */
     public static function providerCost(TokenUsage $usage, TokenRates $rates): int
     {
@@ -52,11 +54,30 @@ final class Money
      */
     public static function perMillion(string $rate): int
     {
-        if (preg_match('/^(\d+)(?:\.(\d{1,9}))?$/', $rate, $m) !== 1) {
-            throw new InvalidArgumentException("Unreadable token rate: {$rate}");
+        return self::fromUsd($rate);
+    }
+
+    /** An exact USD decimal string, like Pixelforge's "0.169080000", as integer nanodollars. Never through a float. */
+    public static function fromUsd(string $usd): int
+    {
+        if (preg_match('/^(\d+)(?:\.(\d{1,9}))?$/', $usd, $m) !== 1) {
+            throw new InvalidArgumentException("Unreadable USD amount: {$usd}");
         }
 
         return (int) $m[1] * self::NANO + (int) str_pad($m[2] ?? '', 9, '0');
+    }
+
+    public static function fromCents(int $cents): int
+    {
+        return $cents * self::CENT;
+    }
+
+    /** "$1.23", rounded to the nearest cent, or up to the next one where showing less would understate a price. */
+    public static function format(int $nanodollars, bool $roundUp = false): string
+    {
+        $cents = $roundUp ? self::ceilDiv($nanodollars, self::CENT) : intdiv($nanodollars + intdiv(self::CENT, 2), self::CENT);
+
+        return sprintf('$%d.%02d', intdiv($cents, 100), $cents % 100);
     }
 
     public static function ceilDiv(int $a, int $b): int

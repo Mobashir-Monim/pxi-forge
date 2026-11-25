@@ -124,14 +124,34 @@ final class FakeImageGenerator implements ImageGenerator
 
     public function usage(CarbonInterface $from, CarbonInterface $to): array
     {
-        // ponytail: zero days only; the admin report tests seed their own expectations.
+        // Bills what this fake completed, on its UTC completion day and at its own rates, as Pixelforge does.
         $days = [];
 
         for ($day = CarbonImmutable::parse($from)->startOfDay(); $day->lte($to); $day = $day->addDay()) {
-            $days[] = new UsageDay($day->toDateString(), 0, new TokenUsage(0, 0, 0, 0), '0.000000000');
+            $days[$day->toDateString()] = ['generations' => 0, 'tokens' => [0, 0, 0, 0], 'cost' => '0'];
         }
 
-        return $days;
+        foreach (self::$generations as $generation) {
+            $date = CarbonImmutable::parse($generation['completed_at'] ?? $generation['created_at'])->utc()->toDateString();
+
+            if ($generation['status'] !== GenerationStatus::Succeeded->value || ! isset($days[$date])) {
+                continue;
+            }
+
+            $days[$date]['generations']++;
+
+            foreach (array_keys(self::RATES) as $i => $type) {
+                $tokens = (int) $generation['usage'][$type];
+                $days[$date]['tokens'][$i] += $tokens;
+                $days[$date]['cost'] = bcadd($days[$date]['cost'], bcdiv(bcmul((string) $tokens, self::RATES[$type], 9), '1000000', 9), 9);
+            }
+        }
+
+        return array_map(
+            fn (string $date, array $day): UsageDay => new UsageDay($date, $day['generations'], new TokenUsage(...$day['tokens']), bcadd($day['cost'], '0', 9)),
+            array_keys($days),
+            $days,
+        );
     }
 
     public function pricing(): Pricing

@@ -213,7 +213,7 @@ const locked = computed(() => {
 // Webhooks update the server. The page polls only the thread, and only while something is running.
 const { start, stop } = usePoll(
     2000,
-    { only: ['chat', 'generations', 'chats'] },
+    { only: ['chat', 'generations', 'chats', 'credits'] },
     { autoStart: false },
 );
 watch(running, (now) => (now ? start() : stop()), { immediate: true });
@@ -406,6 +406,7 @@ function reuse(url: string, name: string): void {
                     :over-limit="overLimit"
                     :locked="locked"
                     :sending="sending"
+                    :credits="$page.props.credits"
                     @files="addFiles"
                     @open-note="
                         (note) => annotate(note.referenceId, note.markId)

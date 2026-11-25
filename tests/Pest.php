@@ -3,6 +3,8 @@
 use App\Domains\Authorization\Enums\Permission;
 use App\Domains\Authorization\Enums\SystemRole;
 use App\Domains\Authorization\Models\Role;
+use App\Domains\Billing\Models\CreditPurchase;
+use App\Domains\Generation\Support\Money;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -61,4 +63,17 @@ function userWith(Permission ...$permissions): User
 function superAdmin(): User
 {
     return User::factory()->create()->assignRole(SystemRole::SuperAdmin->value);
+}
+
+/** Gives the user paid-up credits, $100 unless told otherwise. */
+function withCredits(User $user, int $cents = 10_000): User
+{
+    CreditPurchase::query()->create([
+        'user_id' => $user->id,
+        'client_request_id' => (string) Str::ulid(),
+        'amount_nd' => Money::fromCents($cents),
+        'paid_at' => now(),
+    ]);
+
+    return $user;
 }

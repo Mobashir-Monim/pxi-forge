@@ -4,10 +4,15 @@ import { useDropZone, useTextareaAutosize } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { formatEstimate } from '@/composables/useCostEstimate';
+import { useBuyCredits } from '@/composables/useBuyCredits';
+import {
+    formatCredits,
+    formatEstimate,
+    formatUpTo,
+} from '@/composables/useCostEstimate';
 import { hasImages, onlyImages } from '@/lib/files';
 import { PROMPT_LIMIT } from '@/lib/prompt';
-import type { CostEstimate, NoteSummary } from '@/types';
+import type { CostEstimate, Credits, NoteSummary } from '@/types';
 
 const props = defineProps<{
     estimate: CostEstimate | null;
@@ -23,6 +28,8 @@ const props = defineProps<{
     locked: string | null;
     /** References are uploading or the request is on its way. */
     sending: boolean;
+    /** Null when the user can't see their credits. The server still checks every send. */
+    credits: Credits | null;
 }>();
 
 const emit = defineEmits<{
@@ -44,10 +51,20 @@ const { isOverDropZone } = useDropZone(form, {
     onDrop: (files) => emit('files', onlyImages(files)),
 });
 
+// Checked against the upper bound, the most this image can cost, as the server does.
+const shortOfCredits = computed(
+    () =>
+        props.credits !== null &&
+        props.estimate !== null &&
+        props.credits.available < props.estimate.max,
+);
+const { show: buyCredits } = useBuyCredits();
+
 const canSubmit = computed(
     () =>
         prompt.value.trim() !== '' &&
         props.overLimit <= 0 &&
+        !shortOfCredits.value &&
         props.locked === null &&
         !props.sending,
 );
@@ -226,6 +243,22 @@ function onPick(event: Event): void {
             Your prompt and notes are
             {{ props.overLimit.toLocaleString() }} characters over the
             {{ PROMPT_LIMIT.toLocaleString() }} limit. Shorten them to generate.
+        </p>
+        <p
+            v-else-if="shortOfCredits && props.credits && props.estimate"
+            class="mt-2 text-center text-xs text-destructive"
+            aria-live="polite"
+        >
+            This image can cost up to
+            {{ formatUpTo(props.estimate.max) }}
+            and you have {{ formatCredits(props.credits.available) }} available.
+            <button
+                type="button"
+                class="font-medium text-foreground underline underline-offset-2"
+                @click="buyCredits"
+            >
+                Buy credits
+            </button>
         </p>
         <p
             v-else

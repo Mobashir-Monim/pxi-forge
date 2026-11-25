@@ -3,6 +3,7 @@
 namespace App\Domains\Generation\Actions\Command;
 
 use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Billing\Actions\Query\GetCreditBalance;
 use App\Domains\Generation\Actions\Query\EstimateGenerationCost;
 use App\Domains\Generation\Jobs\SubmitGeneration;
 use App\Domains\Generation\Models\Chat;
@@ -89,6 +90,8 @@ final class SendGeneration
 
         try {
             $generation = DB::transaction(function () use ($user, $chat, $input, $references, $size, $quality, $estimate): Generation {
+                GetCreditBalance::ensureCanAfford($user, $estimate['max']);
+
                 $chat ??= Chat::query()->create(['user_id' => $user->id, 'title' => Str::limit($input['message'], 60)]);
                 $chat->touch();
 

@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { Archive, ShieldCheck, SquarePen, Users } from '@lucide/vue';
+import {
+    Archive,
+    ChartColumn,
+    Plus,
+    ShieldCheck,
+    SquarePen,
+    Users,
+    Wallet,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
+import BuyCreditsDialog from '@/components/BuyCreditsDialog.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -16,10 +25,13 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useBuyCredits } from '@/composables/useBuyCredits';
 import { useCan } from '@/composables/useCan';
+import { formatCredits } from '@/composables/useCostEstimate';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import { show as showChat } from '@/routes/chats';
+import { index as reportsIndex } from '@/routes/reports';
 import { index as rolesIndex } from '@/routes/roles';
 import { index as usersIndex } from '@/routes/users';
 import type { ChatSummary, NavItem } from '@/types';
@@ -27,6 +39,8 @@ import type { ChatSummary, NavItem } from '@/types';
 const can = useCan();
 const page = usePage();
 const { isCurrentUrl } = useCurrentUrl();
+const credits = computed(() => page.props.credits);
+const { show: buyCredits } = useBuyCredits();
 const chats = computed(
     () => (page.props.chats as ChatSummary[] | undefined) ?? [],
 );
@@ -41,6 +55,9 @@ const adminNavItems = computed<NavItem[]>(() => [
         : []),
     ...(can('roles.view')
         ? [{ title: 'Roles', href: rolesIndex(), icon: ShieldCheck }]
+        : []),
+    ...(can('reports.view')
+        ? [{ title: 'Spend report', href: reportsIndex(), icon: ChartColumn }]
         : []),
 ]);
 </script>
@@ -94,8 +111,28 @@ const adminNavItems = computed<NavItem[]>(() => [
         </SidebarContent>
 
         <SidebarFooter>
+            <SidebarMenu v-if="credits">
+                <SidebarMenuItem>
+                    <SidebarMenuButton
+                        :tooltip="`${formatCredits(credits.available)} credits, buy more`"
+                        @click="buyCredits"
+                    >
+                        <Wallet />
+                        <span class="tabular-nums">{{
+                            formatCredits(credits.available)
+                        }}</span>
+                        <span class="text-muted-foreground">credits</span>
+                        <span
+                            class="ml-auto flex items-center gap-0.5 text-xs font-medium text-primary"
+                        >
+                            <Plus class="size-3" />Buy
+                        </span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
             <NavUser />
         </SidebarFooter>
     </Sidebar>
+    <BuyCreditsDialog />
     <slot />
 </template>
