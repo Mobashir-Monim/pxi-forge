@@ -68,6 +68,7 @@
             "Composer\\Config::disableProcessTimeout",
             "bun run check",
             "bun run types:check",
+            "bun test resources/js",
             "@test"
         ],
         "types:check": [

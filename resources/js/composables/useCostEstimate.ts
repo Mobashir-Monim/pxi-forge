@@ -1,13 +1,20 @@
 import { watchDebounced } from '@vueuse/core';
 import { ref } from 'vue';
 import { estimate as estimateRoute } from '@/routes/generations';
-import type { CostEstimate, GenerationDraft } from '@/types';
+import type { CostEstimate, ImageQuality, ImageSize } from '@/types';
+
+type EstimateInput = {
+    prompt: string;
+    size: ImageSize;
+    quality: ImageQuality;
+    referenceImages: number;
+};
 
 /**
  * Keeps a cost estimate for the draft, fetched from the server so the math lives in one place. Only the latest
  * request counts: older ones are cancelled as the user keeps typing.
  */
-export function useCostEstimate(draft: GenerationDraft) {
+export function useCostEstimate(input: () => EstimateInput) {
     const estimate = ref<CostEstimate | null>(null);
     const loading = ref(false);
     let controller: AbortController | null = null;
@@ -17,14 +24,16 @@ export function useCostEstimate(draft: GenerationDraft) {
         controller = new AbortController();
         loading.value = true;
 
+        const { prompt, size, quality, referenceImages } = input();
+
         try {
             const response = await fetch(
                 estimateRoute.url({
                     query: {
-                        prompt: draft.prompt,
-                        size: draft.size,
-                        quality: draft.quality,
-                        reference_images: draft.references.length,
+                        prompt,
+                        size,
+                        quality,
+                        reference_images: referenceImages,
                     },
                 }),
                 {
@@ -45,16 +54,8 @@ export function useCostEstimate(draft: GenerationDraft) {
         loading.value = false;
     }
 
-    watchDebounced(
-        () => [
-            draft.prompt,
-            draft.size,
-            draft.quality,
-            draft.references.length,
-        ],
-        refresh,
-        { debounce: 300, immediate: true },
-    );
+    // Watches the composed prompt, so typing a note on a mark reprices just like typing in the prompt.
+    watchDebounced(input, refresh, { debounce: 300, immediate: true });
 
     return { estimate, loading };
 }

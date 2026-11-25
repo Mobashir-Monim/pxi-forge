@@ -123,5 +123,7 @@
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx",
         "resources/js/**/*.vue"
-    ]
+    ],
+    // Bun runs these and brings its own types.
+    "exclude": ["resources/js/**/*.test.ts"]
 }

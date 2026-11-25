@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ArrowUp, ImagePlus, SlidersHorizontal } from '@lucide/vue';
+import { ArrowUp, ImagePlus, SlidersHorizontal, X } from '@lucide/vue';
 import { useDropZone, useTextareaAutosize } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { formatEstimate } from '@/composables/useCostEstimate';
 import { hasImages, onlyImages } from '@/lib/files';
-import type { CostEstimate } from '@/types';
+import { PROMPT_LIMIT } from '@/lib/prompt';
+import type { CostEstimate, NoteSummary } from '@/types';
 
 const props = defineProps<{
     estimate: CostEstimate | null;
@@ -14,12 +15,17 @@ const props = defineProps<{
     maxReferences: number;
     /** A file is being dragged somewhere over the browser window. */
     dragging: boolean;
+    notes: NoteSummary[];
+    /** How many characters the prompt plus notes run past Pixelforge's limit, zero or less when within it. */
+    overLimit: number;
 }>();
 
 const emit = defineEmits<{
     submit: [];
     files: [files: File[]];
     openSettings: [];
+    openNote: [note: NoteSummary];
+    removeNote: [note: NoteSummary];
 }>();
 
 const prompt = defineModel<string>({ required: true });
@@ -33,7 +39,9 @@ const { isOverDropZone } = useDropZone(form, {
     onDrop: (files) => emit('files', onlyImages(files)),
 });
 
-const canSubmit = computed(() => prompt.value.trim() !== '');
+const canSubmit = computed(
+    () => prompt.value.trim() !== '' && props.overLimit <= 0,
+);
 
 function submit(): void {
     if (canSubmit.value) {
@@ -93,6 +101,45 @@ function onPick(event: Event): void {
                         : 'Drop images here'
                 }}
             </div>
+            <ul
+                v-if="props.notes.length"
+                class="mb-1 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto px-1 pt-1"
+                aria-label="Notes on reference images"
+            >
+                <li
+                    v-for="note in props.notes"
+                    :key="`${note.referenceId}-${note.markId}`"
+                    class="flex max-w-full animate-in items-center rounded-full border bg-muted/50 text-xs zoom-in-95 fade-in"
+                >
+                    <button
+                        type="button"
+                        class="flex min-w-0 items-center gap-1.5 rounded-l-full py-1 pr-1 pl-2.5 hover:text-foreground"
+                        :title="note.note || 'No note yet'"
+                        @click="emit('openNote', note)"
+                    >
+                        <span class="font-semibold tabular-nums">{{
+                            note.label
+                        }}</span>
+                        <span
+                            class="max-w-48 truncate"
+                            :class="
+                                note.note
+                                    ? 'text-muted-foreground'
+                                    : 'text-muted-foreground/60 italic'
+                            "
+                            >{{ note.note || 'No note yet' }}</span
+                        >
+                    </button>
+                    <button
+                        type="button"
+                        class="mr-1 flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+                        :aria-label="`Remove note ${note.label}`"
+                        @click="emit('removeNote', note)"
+                    >
+                        <X class="size-3" />
+                    </button>
+                </li>
+            </ul>
             <textarea
                 ref="textarea"
                 v-model="prompt"
@@ -155,6 +202,16 @@ function onPick(event: Event): void {
         </form>
 
         <p
+            v-if="props.overLimit > 0"
+            class="mt-2 text-center text-xs text-destructive"
+            aria-live="polite"
+        >
+            Your prompt and notes are
+            {{ props.overLimit.toLocaleString() }} characters over the
+            {{ PROMPT_LIMIT.toLocaleString() }} limit. Shorten them to generate.
+        </p>
+        <p
+            v-else
             class="mt-2 text-center text-xs text-muted-foreground"
             aria-live="polite"
         >

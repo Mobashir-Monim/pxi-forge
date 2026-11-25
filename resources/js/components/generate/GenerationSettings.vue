@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ImagePlus, X } from '@lucide/vue';
+import { ImagePlus, MessageSquareText, X } from '@lucide/vue';
 import { useDropZone } from '@vueuse/core';
 import {
     RadioGroupItem,
@@ -26,6 +26,7 @@ const emit = defineEmits<{
     files: [files: File[]];
     url: [url: string];
     remove: [id: number];
+    annotate: [id: number];
 }>();
 
 const size = defineModel<ImageSize>('size', { required: true });
@@ -193,15 +194,29 @@ function onPick(event: Event): void {
                 <li
                     v-for="(reference, index) in props.references"
                     :key="reference.id"
-                    class="group relative aspect-square animate-in overflow-hidden rounded-lg border bg-muted zoom-in-95 fade-in"
+                    class="group relative aspect-square animate-in overflow-hidden rounded-lg border bg-muted zoom-in-95 fade-in focus-within:ring-2 focus-within:ring-ring/50"
                 >
-                    <img
-                        :src="reference.src"
-                        :alt="`Reference ${index + 1}: ${reference.name}`"
-                        class="size-full object-cover"
-                    />
+                    <button
+                        type="button"
+                        class="block size-full focus-visible:outline-none"
+                        :aria-label="`Open reference ${index + 1} to mark areas`"
+                        @click="emit('annotate', reference.id)"
+                    >
+                        <img
+                            :src="reference.src"
+                            :alt="`Reference ${index + 1}: ${reference.name}`"
+                            class="size-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                    </button>
                     <span
-                        class="absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-background/90 text-xs font-semibold tabular-nums shadow-sm"
+                        v-if="reference.annotations.length"
+                        class="pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-[11px] font-medium shadow-sm"
+                    >
+                        <MessageSquareText class="size-3" />
+                        {{ reference.annotations.length }}
+                    </span>
+                    <span
+                        class="pointer-events-none absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-background/90 text-xs font-semibold tabular-nums shadow-sm"
                     >
                         {{ index + 1 }}
                     </span>
