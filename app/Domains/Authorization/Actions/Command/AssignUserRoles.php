@@ -36,7 +36,7 @@ final class AssignUserRoles
         return [
             // Absent means none: a form with every box cleared posts no list at all.
             'roles' => ['nullable', 'array'],
-            'roles.*' => ['integer', 'distinct', 'exists:roles,id'],
+            'roles.*' => ['ulid', 'distinct', 'exists:roles,id'],
         ];
     }
 
@@ -52,7 +52,7 @@ final class AssignUserRoles
         $user = $request->route('user');
 
         $current = $user->roles()->pluck('id')->all();
-        $requested = array_map(intval(...), $request->input('roles') ?? []);
+        $requested = array_map(strval(...), $request->input('roles') ?? []);
         $changed = array_merge(array_diff($requested, $current), array_diff($current, $requested));
 
         $outOfReach = Role::query()->with('permissions')->whereKey($changed)->get()
@@ -64,7 +64,7 @@ final class AssignUserRoles
     }
 
     /**
-     * @param  list<int>  $roleIds
+     * @param  list<string>  $roleIds
      */
     public function handle(User $user, array $roleIds): void
     {
@@ -73,7 +73,7 @@ final class AssignUserRoles
 
     public function asController(ActionRequest $request, User $user): RedirectResponse
     {
-        $this->handle($user, array_values(array_map(intval(...), $request->validated('roles') ?? [])));
+        $this->handle($user, array_values(array_map(strval(...), $request->validated('roles') ?? [])));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Roles for {$user->name} saved."]);
 

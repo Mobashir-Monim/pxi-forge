@@ -19,14 +19,14 @@ import { index } from '@/routes/users';
 import { update as updateRoles } from '@/routes/users/roles';
 
 type UserRow = {
-    id: number;
+    id: string;
     name: string;
     email: string;
-    role_ids: number[];
+    role_ids: string[];
     is_self: boolean;
 };
 
-type RoleOption = { id: number; name: string; within_reach: boolean };
+type RoleOption = { id: string; name: string; within_reach: boolean };
 
 const props = defineProps<{
     users: {
@@ -49,7 +49,7 @@ const roleName = computed(
 );
 
 const editing = ref<UserRow | null>(null);
-const form = useForm<{ roles: number[] }>({ roles: [] });
+const form = useForm<{ roles: string[] }>({ roles: [] });
 
 function edit(user: UserRow): void {
     form.clearErrors();
@@ -57,7 +57,7 @@ function edit(user: UserRow): void {
     editing.value = user;
 }
 
-function toggle(id: number, on: boolean | 'indeterminate'): void {
+function toggle(id: string, on: boolean | 'indeterminate'): void {
     form.roles =
         on === true ? [...form.roles, id] : form.roles.filter((r) => r !== id);
 }

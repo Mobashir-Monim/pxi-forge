@@ -1,8 +1,8 @@
 <?php
 
+use App\Domains\Authorization\Models\Permission;
 use App\Domains\Authorization\Models\Role;
 use Spatie\Permission\DefaultTeamResolver;
-use Spatie\Permission\Models\Permission;
 
 return [
 

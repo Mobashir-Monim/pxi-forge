@@ -6,16 +6,19 @@ use App\Domains\Authorization\Enums\Permission;
 use App\Domains\Authorization\Enums\SystemRole;
 use App\Models\User;
 use Closure;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role as SpatieRole;
 
 /**
- * @property int $id
+ * @property string $id
  * @property string $name
  * @property string $guard_name
  */
 class Role extends SpatieRole
 {
+    use HasUlids;
+
     public function isSuperAdmin(): bool
     {
         return $this->name === SystemRole::SuperAdmin->value;

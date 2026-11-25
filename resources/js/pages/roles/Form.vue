@@ -25,7 +25,7 @@ type CatalogEntry = { name: string; label: string; description: string };
 
 const props = defineProps<{
     role: {
-        id: number;
+        id: string;
         name: string;
         is_system: boolean;
         is_super_admin: boolean;

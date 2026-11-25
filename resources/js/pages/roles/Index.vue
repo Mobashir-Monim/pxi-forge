@@ -8,7 +8,7 @@ import { useCan } from '@/composables/useCan';
 import { create, index, show } from '@/routes/roles';
 
 type RoleRow = {
-    id: number;
+    id: string;
     name: string;
     is_system: boolean;
     is_super_admin: boolean;

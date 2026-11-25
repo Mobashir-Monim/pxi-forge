@@ -3,10 +3,10 @@
 use App\Domains\Authorization\Actions\Command\SyncAuthorizationCatalog;
 use App\Domains\Authorization\Enums\Permission;
 use App\Domains\Authorization\Enums\SystemRole;
+use App\Domains\Authorization\Models\Permission as PermissionModel;
 use App\Domains\Authorization\Models\Role;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia;
-use Spatie\Permission\Models\Permission as PermissionModel;
 
 function customRole(Permission ...$permissions): Role
 {

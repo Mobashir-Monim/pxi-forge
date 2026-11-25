@@ -4,10 +4,10 @@ namespace App\Domains\Authorization\Actions\Command;
 
 use App\Domains\Authorization\Enums\Permission;
 use App\Domains\Authorization\Enums\SystemRole;
+use App\Domains\Authorization\Models\Permission as PermissionModel;
 use App\Domains\Authorization\Models\Role;
 use Illuminate\Console\Command;
 use Lorisleiva\Actions\Concerns\AsAction;
-use Spatie\Permission\Models\Permission as PermissionModel;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
