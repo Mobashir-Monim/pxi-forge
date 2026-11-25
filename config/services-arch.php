@@ -2,6 +2,8 @@
 
 use App\Services\ImageGeneration\Providers\FakeImageGenerator;
 use App\Services\ImageGeneration\Providers\PixelforgeImageGenerator;
+use App\Services\ObjectStore\Providers\FakeObjectStore;
+use App\Services\ObjectStore\Providers\S3ObjectStore;
 use App\Services\Payment\Providers\FakePaymentGateway;
 use App\Services\Payment\Providers\StripePaymentGateway;
 use App\Services\SocialAuth\Providers\GitHubIdentityProvider;
@@ -37,6 +39,15 @@ return [
         'providers' => [
             'google' => GoogleIdentityProvider::class,
             'github' => GitHubIdentityProvider::class,
+        ],
+    ],
+
+    // Durable blobs on any S3-compatible store.
+    'objectStore' => [
+        'default' => env('OBJECT_STORE_PROVIDER', 's3'),
+        'providers' => [
+            'fake' => FakeObjectStore::class,
+            's3' => S3ObjectStore::class,
         ],
     ],
 
