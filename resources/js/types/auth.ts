@@ -12,6 +12,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /** Every permission the user holds, e.g. `roles.update`. Super admins get them all. */
+    permissions: string[];
 };
 
 export type Passkey = {

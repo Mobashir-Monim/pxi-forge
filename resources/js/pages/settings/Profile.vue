@@ -101,5 +101,9 @@ const user = computed(() => page.props.auth.user);
         </Form>
     </div>
 
-    <DeleteUser />
+    <DeleteUser v-if="page.props.canDeleteAccount" />
+    <p v-else class="text-sm text-muted-foreground">
+        Super admins can't delete their own account. Ask another super admin to
+        remove your Super Admin role first.
+    </p>
 </template>

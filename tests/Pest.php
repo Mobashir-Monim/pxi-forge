@@ -1,6 +1,11 @@
 <?php
 
+use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Authorization\Enums\SystemRole;
+use App\Domains\Authorization\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -44,7 +49,16 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/** A verified user holding one custom role that grants exactly these permissions. */
+function userWith(Permission ...$permissions): User
 {
-    // ..
+    $role = Role::create(['name' => 'Role '.Str::random(8), 'guard_name' => 'web']);
+    $role->syncPermissions(array_map(fn (Permission $p): string => $p->value, $permissions));
+
+    return User::factory()->create()->assignRole($role);
+}
+
+function superAdmin(): User
+{
+    return User::factory()->create()->assignRole(SystemRole::SuperAdmin->value);
 }

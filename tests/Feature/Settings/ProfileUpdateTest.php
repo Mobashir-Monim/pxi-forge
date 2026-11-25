@@ -139,4 +139,17 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertNotNull($user->fresh());
     }
+
+    public function test_super_admin_cannot_delete_their_own_account()
+    {
+        $user = superAdmin();
+
+        $this->actingAs($user)
+            ->delete(route('profile.destroy'), ['password' => 'password'])
+            ->assertForbidden();
+
+        $this->assertNotNull($user->fresh());
+        $this->actingAs($user)->get(route('profile.edit'))
+            ->assertInertia(fn ($page) => $page->where('canDeleteAccount', false));
+    }
 }

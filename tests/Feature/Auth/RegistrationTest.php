@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Domains\Authorization\Enums\SystemRole;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -35,5 +37,6 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+        $this->assertTrue(User::firstWhere('email', 'test@example.com')->hasRole(SystemRole::Member->value));
     }
 }
