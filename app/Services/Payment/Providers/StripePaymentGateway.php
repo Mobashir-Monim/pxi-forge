@@ -44,6 +44,9 @@ final class StripePaymentGateway implements HandlesWebhooks, PaymentGateway
                     'product_data' => ['name' => $request->description],
                 ],
             ]],
+            // Charged in the request's currency only. Adaptive Pricing would let the buyer pay in theirs, and the amount
+            // paid would no longer match what's being bought.
+            'adaptive_pricing' => ['enabled' => 'false'],
             'metadata' => $request->metadata,
             // On the payment intent too, so it reads right in the Stripe dashboard.
             'payment_intent_data' => ['metadata' => $request->metadata],
