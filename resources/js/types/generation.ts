@@ -44,3 +44,20 @@ export type NoteSummary = {
     label: string;
     note: string;
 };
+
+export type GenerationStatus = 'queued' | 'processing' | 'succeeded' | 'failed';
+
+/** One sent prompt and its generation, as the thread shows it. */
+export type GenerationTurn = {
+    id: number;
+    /** What the user typed, shown in their message. */
+    prompt: string;
+    /** What Pixelforge receives: the prompt with every note appended. */
+    composedPrompt: string;
+    size: ImageSize;
+    quality: ImageQuality;
+    references: ReferenceImage[];
+    estimate: CostEstimate | null;
+    status: GenerationStatus;
+    createdAt: number;
+};

@@ -223,7 +223,7 @@ function onPick(event: Event): void {
                 {{
                     props.estimate ? formatEstimate(props.estimate) : '–'
                 }} </span
-            >. You're only charged if the image is made.
+            >. Final price may vary.
         </p>
     </div>
 </template>

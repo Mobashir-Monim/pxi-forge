@@ -3,12 +3,27 @@ import { ref } from 'vue';
 import { estimate as estimateRoute } from '@/routes/generations';
 import type { CostEstimate, ImageQuality, ImageSize } from '@/types';
 
-type EstimateInput = {
+export type EstimateInput = {
     prompt: string;
     size: ImageSize;
     quality: ImageQuality;
     referenceImages: number;
 };
+
+/** One estimate from the server, null when it can't be priced (say, the prompt is over the limit). */
+export async function fetchEstimate(
+    { prompt, size, quality, referenceImages }: EstimateInput,
+    signal?: AbortSignal,
+): Promise<CostEstimate | null> {
+    const response = await fetch(
+        estimateRoute.url({
+            query: { prompt, size, quality, reference_images: referenceImages },
+        }),
+        { headers: { Accept: 'application/json' }, signal },
+    );
+
+    return response.ok ? response.json() : null;
+}
 
 /**
  * Keeps a cost estimate for the draft, fetched from the server so the math lives in one place. Only the latest
@@ -24,25 +39,8 @@ export function useCostEstimate(input: () => EstimateInput) {
         controller = new AbortController();
         loading.value = true;
 
-        const { prompt, size, quality, referenceImages } = input();
-
         try {
-            const response = await fetch(
-                estimateRoute.url({
-                    query: {
-                        prompt,
-                        size,
-                        quality,
-                        reference_images: referenceImages,
-                    },
-                }),
-                {
-                    headers: { Accept: 'application/json' },
-                    signal: controller.signal,
-                },
-            );
-
-            estimate.value = response.ok ? await response.json() : null;
+            estimate.value = await fetchEstimate(input(), controller.signal);
         } catch (error) {
             if ((error as Error).name === 'AbortError') {
                 return;

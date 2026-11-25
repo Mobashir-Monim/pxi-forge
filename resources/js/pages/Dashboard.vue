@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { useDropZone } from '@vueuse/core';
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import AnnotateImage from '@/components/generate/AnnotateImage.vue';
+import GenerationTurn from '@/components/generate/GenerationTurn.vue';
 import GenerationSettings from '@/components/generate/GenerationSettings.vue';
 import PromptBar from '@/components/generate/PromptBar.vue';
 import {
@@ -13,7 +14,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { useCostEstimate } from '@/composables/useCostEstimate';
+import { fetchEstimate, useCostEstimate } from '@/composables/useCostEstimate';
 import { hasImages } from '@/lib/files';
 import {
     characterCount,
@@ -22,7 +23,12 @@ import {
     PROMPT_LIMIT,
 } from '@/lib/prompt';
 import { dashboard } from '@/routes';
-import type { GenerationDraft, NoteSummary, ReferenceImage } from '@/types';
+import type {
+    GenerationDraft,
+    GenerationTurn as Turn,
+    NoteSummary,
+    ReferenceImage,
+} from '@/types';
 
 defineOptions({
     layout: {
@@ -146,11 +152,62 @@ function removeReference(id: number): void {
     draft.references.splice(index, 1);
 }
 
-onBeforeUnmount(() => draft.references.forEach(revoke));
+const turns = ref<Turn[]>([]);
+const thread = ref<HTMLElement>();
+
+onBeforeUnmount(() => {
+    draft.references.forEach(revoke);
+    turns.value.forEach((turn) => turn.references.forEach(revoke));
+});
 
 function submit(): void {
-    // ponytail: placeholder until generations are stored and sent to Pixelforge.
-    toast.info('Generating comes next. Your settings are ready.');
+    // The body the create endpoint will take. Uploads have no public URL until they're stored.
+    const request = {
+        prompt: composedPrompt.value,
+        size: draft.size,
+        quality: draft.quality,
+        reference_images: draft.references.map((reference) =>
+            reference.file
+                ? `(upload, not stored yet) ${reference.name}`
+                : reference.src,
+        ),
+    };
+
+    console.log('[generate] request', request);
+    console.log(`[generate] prompt sent to Pixelforge:\n\n${request.prompt}`);
+
+    turns.value.push({
+        id: nextId++,
+        prompt: draft.prompt.trim(),
+        composedPrompt: request.prompt,
+        size: draft.size,
+        quality: draft.quality,
+        // The thread keeps the references, so their previews aren't revoked here.
+        references: draft.references,
+        estimate: null,
+        status: 'queued',
+        createdAt: Date.now(),
+    });
+
+    const turn = turns.value[turns.value.length - 1];
+
+    // Priced for exactly what was sent: the live estimate can trail the last keystroke by its debounce.
+    fetchEstimate({
+        prompt: request.prompt,
+        size: request.size,
+        quality: request.quality,
+        referenceImages: request.reference_images.length,
+    })
+        .then((estimate) => (turn.estimate = estimate))
+        .catch(() => {});
+    // ponytail: simulated status until generations are stored and sent to Pixelforge, then this comes from the server.
+    setTimeout(() => (turn.status = 'processing'), 2000);
+
+    draft.prompt = '';
+    draft.references = [];
+    nextTick(() =>
+        thread.value?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }),
+    );
 }
 </script>
 
@@ -159,12 +216,34 @@ function submit(): void {
 
     <div class="flex min-h-0 flex-1">
         <main
-            class="flex min-w-0 flex-1 flex-col items-center justify-center gap-8 p-4 pb-8"
+            class="flex min-w-0 flex-1 flex-col items-center gap-8 px-4"
+            :class="turns.length ? '' : 'justify-center pb-8'"
         >
-            <h1 class="text-center text-2xl font-medium tracking-tight">
+            <h1
+                v-if="!turns.length"
+                class="text-center text-2xl font-medium tracking-tight"
+            >
                 What do you want to create?
             </h1>
-            <div class="w-full max-w-3xl">
+            <div
+                v-else
+                ref="thread"
+                class="flex w-full max-w-3xl flex-1 flex-col gap-10 pt-4"
+            >
+                <GenerationTurn
+                    v-for="turn in turns"
+                    :key="turn.id"
+                    :turn="turn"
+                />
+            </div>
+            <div
+                class="w-full max-w-3xl"
+                :class="
+                    turns.length
+                        ? 'sticky bottom-0 bg-gradient-to-t from-background from-70% to-transparent pt-6 pb-4'
+                        : ''
+                "
+            >
                 <PromptBar
                     v-model="draft.prompt"
                     :estimate="estimate"
@@ -186,20 +265,22 @@ function submit(): void {
         </main>
 
         <aside
-            class="hidden w-80 shrink-0 overflow-y-auto border-l border-sidebar-border/70 p-5 lg:block"
+            class="hidden w-80 shrink-0 border-l border-sidebar-border/70 lg:block"
             aria-label="Image settings"
         >
-            <GenerationSettings
-                v-model:size="draft.size"
-                v-model:quality="draft.quality"
-                :references="draft.references"
-                :max-references="MAX_REFERENCES"
-                :dragging="draggingFile"
-                @files="addFiles"
-                @url="addUrl"
-                @remove="removeReference"
-                @annotate="annotate"
-            />
+            <div class="sticky top-0 max-h-svh overflow-y-auto p-5">
+                <GenerationSettings
+                    v-model:size="draft.size"
+                    v-model:quality="draft.quality"
+                    :references="draft.references"
+                    :max-references="MAX_REFERENCES"
+                    :dragging="draggingFile"
+                    @files="addFiles"
+                    @url="addUrl"
+                    @remove="removeReference"
+                    @annotate="annotate"
+                />
+            </div>
         </aside>
 
         <Sheet v-model:open="settingsOpen">

@@ -67,6 +67,18 @@
             transform: translateX(-50%);
         }
     }
+
+    /* A light band sweeping across a placeholder while an image generates. */
+    --animate-shimmer: shimmer 2.2s ease-in-out infinite;
+
+    @keyframes shimmer {
+        from {
+            background-position: 150% 0;
+        }
+        to {
+            background-position: -50% 0;
+        }
+    }
 }
 
 :root {
