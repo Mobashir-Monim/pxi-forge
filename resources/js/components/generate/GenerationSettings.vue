@@ -119,26 +119,28 @@ function onPick(event: Event): void {
                     v-for="item in sizes"
                     :key="item.value"
                     :value="item.value"
-                    class="flex h-[92px] w-full items-center gap-3 rounded-lg border px-3 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-accent"
+                    class="flex h-[72px] w-full items-center gap-3 rounded-lg border px-3 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-accent"
                 >
                     <span
-                        class="flex size-10 shrink-0 items-center justify-center"
+                        class="flex w-14 shrink-0 flex-col items-center gap-1"
                     >
+                        <span class="flex h-7 items-center">
+                            <span
+                                class="rounded-[3px] border-2 border-current"
+                                :class="item.shape"
+                            />
+                        </span>
                         <span
-                            class="rounded-[3px] border-2 border-current"
-                            :class="item.shape"
-                        />
+                            class="text-[10px] text-muted-foreground tabular-nums"
+                            >{{ item.value }}</span
+                        >
                     </span>
                     <span class="min-w-0">
                         <span class="block text-sm font-medium">{{
                             item.label
                         }}</span>
                         <span
-                            class="block text-xs text-muted-foreground tabular-nums"
-                            >{{ item.value }}</span
-                        >
-                        <span
-                            class="mt-1 line-clamp-2 block text-xs text-muted-foreground"
+                            class="mt-0.5 line-clamp-2 block text-xs text-muted-foreground"
                             >{{ item.description }}</span
                         >
                     </span>
