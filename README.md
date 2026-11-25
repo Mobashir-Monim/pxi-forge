@@ -16,13 +16,13 @@ composer dev            # app, queue worker and Vite
 
 Fill these in `.env`:
 
-| Variable | What for |
-|---|---|
-| `PIXELFORGE_API_KEY` | One key per environment, so each one's usage report matches its own records. |
-| `PIXELFORGE_WEBHOOK_SECRET` | The signing secret for that key's webhook, which points at `/webhooks/imageGeneration/pixelforge`. |
-| `STRIPE_SECRET` | A test-mode key (`sk_test_`). No real money moves. |
-| `STRIPE_WEBHOOK_SECRET` | For `/webhooks/payment/stripe`, events `checkout.session.completed` and `checkout.session.async_payment_succeeded`. |
-| `OBJECT_STORE_PROVIDER` | `s3` with the `AWS_*` settings, or `local` for the public disk in development. |
+| Variable                    | What for                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `PIXELFORGE_API_KEY`        | One key per environment, so each one's usage report matches its own records.                                        |
+| `PIXELFORGE_WEBHOOK_SECRET` | The signing secret for that key's webhook, which points at `/webhooks/imageGeneration/pixelforge`.                  |
+| `STRIPE_SECRET`             | A test-mode key (`sk_test_`). No real money moves.                                                                  |
+| `STRIPE_WEBHOOK_SECRET`     | For `/webhooks/payment/stripe`, events `checkout.session.completed` and `checkout.session.async_payment_succeeded`. |
+| `OBJECT_STORE_PROVIDER`     | `s3` with the `AWS_*` settings, or `local` for the public disk in development.                                      |
 
 A queue worker must be running: every call to Pixelforge happens in a job. Without a public webhook URL (no tunnel), results still arrive through the fallback poll, just slower.
 
