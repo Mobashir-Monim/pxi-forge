@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router, usePoll } from '@inertiajs/vue3';
 import { useDropZone } from '@vueuse/core';
-import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import AnnotateImage from '@/components/generate/AnnotateImage.vue';
 import GenerationTurn from '@/components/generate/GenerationTurn.vue';
@@ -14,7 +14,8 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { fetchEstimate, useCostEstimate } from '@/composables/useCostEstimate';
+import { useCan } from '@/composables/useCan';
+import { useCostEstimate } from '@/composables/useCostEstimate';
 import { hasImages } from '@/lib/files';
 import {
     characterCount,
@@ -22,13 +23,27 @@ import {
     markLetter,
     PROMPT_LIMIT,
 } from '@/lib/prompt';
+import { ulid } from '@/lib/ulid';
 import { dashboard } from '@/routes';
+import { store as sendInChat } from '@/routes/chats/generations';
+import {
+    retry as retryRoute,
+    store as sendInNewChat,
+} from '@/routes/generations';
+import { store as uploadRoute } from '@/routes/references';
 import type {
+    ChatSummary,
+    Generation,
     GenerationDraft,
-    GenerationTurn as Turn,
     NoteSummary,
     ReferenceImage,
 } from '@/types';
+
+const props = defineProps<{
+    /** Null on the new-chat page. */
+    chat?: ChatSummary | null;
+    generations?: Generation[];
+}>();
 
 defineOptions({
     layout: {
@@ -152,67 +167,181 @@ function removeReference(id: number): void {
     draft.references.splice(index, 1);
 }
 
-const turns = ref<Turn[]>([]);
+const can = useCan();
+const turns = computed(() => props.generations ?? []);
 const thread = ref<HTMLElement>();
 
-onBeforeUnmount(() => {
-    draft.references.forEach(revoke);
-    turns.value.forEach((turn) => turn.references.forEach(revoke));
+const running = computed(() =>
+    turns.value.some((turn) =>
+        ['pending', 'queued', 'processing'].includes(turn.status),
+    ),
+);
+const archived = computed(() => props.chat?.archived ?? false);
+
+/** One running image per chat, and a closed chat takes nothing. The server enforces both, this explains them. */
+const locked = computed(() => {
+    if (archived.value) {
+        return 'A prompt in this chat was blocked, so the chat is closed. Start a new chat to keep going.';
+    }
+
+    if (!can('generations.create')) {
+        return "You don't have permission to generate images.";
+    }
+
+    return running.value
+        ? 'Wait for this image to finish before sending the next prompt.'
+        : null;
 });
 
-function submit(): void {
-    // The body the create endpoint will take. Uploads have no public URL until they're stored.
-    const request = {
-        prompt: composedPrompt.value,
-        size: draft.size,
-        quality: draft.quality,
-        reference_images: draft.references.map((reference) =>
-            reference.file
-                ? `(upload, not stored yet) ${reference.name}`
-                : reference.src,
-        ),
-    };
+// Webhooks update the server. The page polls only the thread, and only while something is running.
+const { start, stop } = usePoll(
+    2000,
+    { only: ['chat', 'generations', 'chats'] },
+    { autoStart: false },
+);
+watch(running, (now) => (now ? start() : stop()), { immediate: true });
 
-    console.log('[generate] request', request);
-    console.log(`[generate] prompt sent to Pixelforge:\n\n${request.prompt}`);
-
-    turns.value.push({
-        id: nextId++,
-        prompt: draft.prompt.trim(),
-        composedPrompt: request.prompt,
-        size: draft.size,
-        quality: draft.quality,
-        // The thread keeps the references, so their previews aren't revoked here.
-        references: draft.references,
-        estimate: null,
-        status: 'queued',
-        createdAt: Date.now(),
-    });
-
-    const turn = turns.value[turns.value.length - 1];
-
-    // Priced for exactly what was sent: the live estimate can trail the last keystroke by its debounce.
-    fetchEstimate({
-        prompt: request.prompt,
-        size: request.size,
-        quality: request.quality,
-        referenceImages: request.reference_images.length,
-    })
-        .then((estimate) => (turn.estimate = estimate))
-        .catch(() => {});
-    // ponytail: simulated status until generations are stored and sent to Pixelforge, then this comes from the server.
-    setTimeout(() => (turn.status = 'processing'), 2000);
-
-    draft.prompt = '';
-    draft.references = [];
+function scrollToEnd(): void {
     nextTick(() =>
         thread.value?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }),
     );
 }
+
+watch(() => turns.value.length, scrollToEnd);
+
+// Switching chats starts a clean draft, so references never leak from one chat into another.
+watch(
+    () => props.chat?.id,
+    () => {
+        draft.references.forEach(revoke);
+        draft.prompt = '';
+        draft.references = [];
+    },
+);
+
+onBeforeUnmount(() => draft.references.forEach(revoke));
+
+function xsrfToken(): string {
+    const match = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+/** Pixelforge takes references as public URLs, so uploads are stored first. */
+async function upload(file: File): Promise<{ url: string; name: string }> {
+    const body = new FormData();
+    body.append('file', file);
+
+    const response = await fetch(uploadRoute.url(), {
+        method: 'POST',
+        body,
+        headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrfToken() },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Couldn't upload ${file.name}.`);
+    }
+
+    return response.json();
+}
+
+const sending = ref(false);
+// Kept until the send succeeds, so sending again after a dropped response is recognised by the server, not doubled.
+let requestId = ulid();
+
+async function submit(): Promise<void> {
+    if (sending.value || locked.value) {
+        return;
+    }
+
+    sending.value = true;
+
+    let references;
+
+    try {
+        references = await Promise.all(
+            draft.references.map(async (reference) => ({
+                ...(reference.file
+                    ? await upload(reference.file)
+                    : { url: reference.src, name: reference.name }),
+                annotations: reference.annotations.map(
+                    ({ x, y, width, height, note }) => ({
+                        x,
+                        y,
+                        width,
+                        height,
+                        note,
+                    }),
+                ),
+            })),
+        );
+    } catch (error) {
+        toast.error((error as Error).message);
+        sending.value = false;
+
+        return;
+    }
+
+    router.post(
+        props.chat ? sendInChat.url(props.chat.id) : sendInNewChat.url(),
+        {
+            client_request_id: requestId,
+            message: draft.prompt.trim(),
+            prompt: composedPrompt.value,
+            size: draft.size,
+            quality: draft.quality,
+            references,
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                requestId = ulid();
+                draft.references.forEach(revoke);
+                draft.prompt = '';
+                draft.references = [];
+            },
+            onError: (errors) =>
+                toast.error(Object.values(errors)[0] ?? "Couldn't send that."),
+            onFinish: () => (sending.value = false),
+        },
+    );
+}
+
+const retrying = ref(false);
+
+function retry(generation: Generation): void {
+    router.post(
+        retryRoute.url(generation.id),
+        {},
+        {
+            preserveScroll: true,
+            onStart: () => (retrying.value = true),
+            onError: (errors) =>
+                toast.error(Object.values(errors)[0] ?? "Couldn't retry that."),
+            onFinish: () => (retrying.value = false),
+        },
+    );
+}
+
+function canRetry(generation: Generation, index: number): boolean {
+    return (
+        index === turns.value.length - 1 &&
+        generation.status === 'failed' &&
+        (generation.failure?.retryable ?? false) &&
+        !archived.value &&
+        can('generations.retry')
+    );
+}
+
+function reuse(url: string, name: string): void {
+    if (!addReference({ src: url, name, file: null })) {
+        toast.error(`You can use up to ${MAX_REFERENCES} reference images.`);
+    }
+}
 </script>
 
 <template>
-    <Head title="New image" />
+    <Head :title="chat?.title ?? 'New image'" />
 
     <div class="flex min-h-0 flex-1">
         <main
@@ -231,9 +360,14 @@ function submit(): void {
                 class="flex w-full max-w-3xl flex-1 flex-col gap-10 pt-4"
             >
                 <GenerationTurn
-                    v-for="turn in turns"
+                    v-for="(turn, index) in turns"
                     :key="turn.id"
-                    :turn="turn"
+                    :generation="turn"
+                    :can-retry="canRetry(turn, index)"
+                    :can-reuse="!archived"
+                    :retrying="retrying"
+                    @retry="retry(turn)"
+                    @reuse="reuse"
                 />
             </div>
             <div
@@ -253,6 +387,8 @@ function submit(): void {
                     :dragging="draggingFile"
                     :notes="notes"
                     :over-limit="overLimit"
+                    :locked="locked"
+                    :sending="sending"
                     @files="addFiles"
                     @open-note="
                         (note) => annotate(note.referenceId, note.markId)

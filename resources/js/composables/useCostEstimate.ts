@@ -66,3 +66,10 @@ export function formatEstimate({ min, max }: CostEstimate): string {
 
     return low === high ? dollars(low) : `${dollars(low)} – ${dollars(high)}`;
 }
+
+/** What the user paid, to the nearest cent. The cheapest image is over a cent, so a real charge never shows as $0.00. */
+export function formatCharge(nanodollars: number): string {
+    return nanodollars === 0
+        ? 'Free'
+        : `$${(Math.round(nanodollars / 10_000_000) / 100).toFixed(2)}`;
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { ShieldCheck, SquarePen, Users } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { Archive, ShieldCheck, SquarePen, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,12 +17,19 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { useCan } from '@/composables/useCan';
+import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
+import { show as showChat } from '@/routes/chats';
 import { index as rolesIndex } from '@/routes/roles';
 import { index as usersIndex } from '@/routes/users';
-import type { NavItem } from '@/types';
+import type { ChatSummary, NavItem } from '@/types';
 
 const can = useCan();
+const page = usePage();
+const { isCurrentUrl } = useCurrentUrl();
+const chats = computed(
+    () => (page.props.chats as ChatSummary[] | undefined) ?? [],
+);
 
 const mainNavItems: NavItem[] = [
     { title: 'New image', href: dashboard(), icon: SquarePen },
@@ -60,10 +67,27 @@ const adminNavItems = computed<NavItem[]>(() => [
                 :items="adminNavItems"
             />
 
-            <!-- ponytail: empty until generations exist, then this lists the latest ones -->
             <SidebarGroup class="group-data-[collapsible=icon]:hidden">
                 <SidebarGroupLabel>Recents</SidebarGroupLabel>
-                <p class="px-2 text-sm text-muted-foreground">
+                <SidebarMenu v-if="chats.length">
+                    <SidebarMenuItem v-for="chat in chats" :key="chat.id">
+                        <SidebarMenuButton
+                            as-child
+                            :is-active="isCurrentUrl(showChat(chat.id))"
+                            :tooltip="chat.title"
+                        >
+                            <Link :href="showChat(chat.id)">
+                                <span class="truncate">{{ chat.title }}</span>
+                                <Archive
+                                    v-if="chat.archived"
+                                    class="ml-auto text-muted-foreground"
+                                    aria-label="Closed"
+                                />
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+                <p v-else class="px-2 text-sm text-muted-foreground">
                     Your images will show up here.
                 </p>
             </SidebarGroup>

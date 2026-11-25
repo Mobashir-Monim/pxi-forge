@@ -45,19 +45,49 @@ export type NoteSummary = {
     note: string;
 };
 
-export type GenerationStatus = 'queued' | 'processing' | 'succeeded' | 'failed';
+export type GenerationStatus =
+    | 'pending'
+    | 'queued'
+    | 'processing'
+    | 'succeeded'
+    | 'failed';
 
-/** One sent prompt and its generation, as the thread shows it. */
-export type GenerationTurn = {
-    id: number;
-    /** What the user typed, shown in their message. */
+/** A reference as a sent generation keeps it: a stored URL and its notes, read-only. */
+export type SentReference = {
+    url: string;
+    name: string;
+    annotations: Omit<Annotation, 'id'>[];
+};
+
+/** One generation in a chat's thread, as the server sends it. Money is nanodollars, the user's price only. */
+export type Generation = {
+    id: string;
+    status: GenerationStatus;
+    /** What the user typed. */
+    message: string;
+    /** What Pixelforge received: the message with every note appended. */
     prompt: string;
-    /** What Pixelforge receives: the prompt with every note appended. */
-    composedPrompt: string;
     size: ImageSize;
     quality: ImageQuality;
-    references: ReferenceImage[];
-    estimate: CostEstimate | null;
-    status: GenerationStatus;
-    createdAt: number;
+    references: SentReference[];
+    estimate: CostEstimate;
+    /** What the user was charged, set once it's finished. Zero when failed or late. */
+    charge: number | null;
+    /** While pending: why it hasn't reached Pixelforge yet. */
+    waiting_reason: 'busy' | 'overloaded' | null;
+    failure: { reason: string; message: string; retryable: boolean } | null;
+    /** Finished after we stopped waiting, so it's free. */
+    late: boolean;
+    image_url: string | null;
+    retry_of_id: string | null;
+    created_at: string;
+    /** When Pixelforge accepted it. Timings count from here. */
+    accepted_at: string | null;
+    completed_at: string | null;
+};
+
+export type ChatSummary = {
+    id: string;
+    title: string;
+    archived: boolean;
 };

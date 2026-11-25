@@ -3,6 +3,7 @@ import { ArrowUp, ImagePlus, SlidersHorizontal, X } from '@lucide/vue';
 import { useDropZone, useTextareaAutosize } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { formatEstimate } from '@/composables/useCostEstimate';
 import { hasImages, onlyImages } from '@/lib/files';
 import { PROMPT_LIMIT } from '@/lib/prompt';
@@ -18,6 +19,10 @@ const props = defineProps<{
     notes: NoteSummary[];
     /** How many characters the prompt plus notes run past Pixelforge's limit, zero or less when within it. */
     overLimit: number;
+    /** Why nothing can be sent right now (an image is still generating, or the chat is closed), null when it can. */
+    locked: string | null;
+    /** References are uploading or the request is on its way. */
+    sending: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -40,7 +45,11 @@ const { isOverDropZone } = useDropZone(form, {
 });
 
 const canSubmit = computed(
-    () => prompt.value.trim() !== '' && props.overLimit <= 0,
+    () =>
+        prompt.value.trim() !== '' &&
+        props.overLimit <= 0 &&
+        props.locked === null &&
+        !props.sending,
 );
 
 function submit(): void {
@@ -196,13 +205,21 @@ function onPick(event: Event): void {
                     aria-label="Generate"
                     :disabled="!canSubmit"
                 >
-                    <ArrowUp />
+                    <Spinner v-if="props.sending" />
+                    <ArrowUp v-else />
                 </Button>
             </div>
         </form>
 
         <p
-            v-if="props.overLimit > 0"
+            v-if="props.locked"
+            class="mt-2 text-center text-xs text-muted-foreground"
+            aria-live="polite"
+        >
+            {{ props.locked }}
+        </p>
+        <p
+            v-else-if="props.overLimit > 0"
             class="mt-2 text-center text-xs text-destructive"
             aria-live="polite"
         >
