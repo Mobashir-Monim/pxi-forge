@@ -64,15 +64,11 @@ const statusText = computed(() => {
     }[status];
 });
 
-const timing = computed(() => {
-    if (props.generation.accepted_at === null) {
-        return `${elapsed.value}s`;
-    }
-
-    return elapsed.value > USUAL_SECONDS
-        ? `Taking longer than usual, ${elapsed.value}s`
-        : `${elapsed.value}s, usually 5 to 30s`;
-});
+// No timer on screen, only a note once it runs past Pixelforge's usual time.
+const slow = computed(
+    () =>
+        props.generation.accepted_at !== null && elapsed.value > USUAL_SECONDS,
+);
 
 const notes = computed(() =>
     props.generation.references.flatMap((reference, r) =>
@@ -187,15 +183,15 @@ const price = computed(() => {
                         <span class="font-medium text-foreground">{{
                             statusText
                         }}</span>
-                        <span v-if="active" class="text-xs tabular-nums">{{
-                            timing
-                        }}</span>
+                        <span v-if="active && slow" class="text-xs">
+                            Taking longer than usual
+                        </span>
                         <span
-                            v-else-if="generation.failure"
+                            v-else-if="!active && generation.failure"
                             class="text-xs text-balance"
                             >{{ generation.failure.message }}</span
                         >
-                        <span v-else class="text-xs">
+                        <span v-else-if="!active" class="text-xs">
                             The image link has expired.
                         </span>
                         <Button
