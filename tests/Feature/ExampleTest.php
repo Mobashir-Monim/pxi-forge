@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,5 +15,13 @@ class ExampleTest extends TestCase
         $response = $this->get(route('home'));
 
         $response->assertOk();
+        $response->assertInertia(fn ($page) => $page->component('auth/Login'));
+    }
+
+    public function test_home_redirects_signed_in_users_to_the_dashboard()
+    {
+        $this->actingAs(User::factory()->create())
+            ->get(route('home'))
+            ->assertRedirect(route('dashboard'));
     }
 }

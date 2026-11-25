@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
+import SocialLogin from '@/components/SocialLogin.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,9 @@ import { store } from '@/routes/register';
 defineProps<{
     passwordRules: string;
 }>();
+
+// Local date, toISOString() would shift to UTC and can land on tomorrow or yesterday.
+const today = new Date().toLocaleDateString('en-CA');
 
 defineOptions({
     layout: {
@@ -62,11 +66,33 @@ defineOptions({
             </div>
 
             <div class="grid gap-2">
+                <Label for="date_of_birth">Date of birth</Label>
+                <Input
+                    id="date_of_birth"
+                    type="date"
+                    required
+                    :tabindex="3"
+                    autocomplete="bday"
+                    name="date_of_birth"
+                    :max="today"
+                    aria-describedby="date_of_birth_note"
+                />
+                <p
+                    id="date_of_birth_note"
+                    class="text-xs text-muted-foreground"
+                >
+                    Only used to verify your age and show content suitable for
+                    you.
+                </p>
+                <InputError :message="errors.date_of_birth" />
+            </div>
+
+            <div class="grid gap-2">
                 <Label for="password">Password</Label>
                 <PasswordInput
                     id="password"
                     required
-                    :tabindex="3"
+                    :tabindex="4"
                     autocomplete="new-password"
                     name="password"
                     placeholder="Password"
@@ -80,7 +106,7 @@ defineOptions({
                 <PasswordInput
                     id="password_confirmation"
                     required
-                    :tabindex="4"
+                    :tabindex="5"
                     autocomplete="new-password"
                     name="password_confirmation"
                     placeholder="Confirm password"
@@ -92,7 +118,7 @@ defineOptions({
             <Button
                 type="submit"
                 class="mt-2 w-full"
-                tabindex="5"
+                :tabindex="6"
                 :disabled="processing"
                 data-test="register-user-button"
             >
@@ -106,9 +132,11 @@ defineOptions({
             <TextLink
                 :href="login()"
                 class="underline underline-offset-4"
-                :tabindex="6"
+                :tabindex="7"
                 >Log in</TextLink
             >
         </div>
     </Form>
+
+    <SocialLogin />
 </template>

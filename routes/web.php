@@ -8,8 +8,10 @@ use App\Domains\Authorization\Actions\Query\ListRoles;
 use App\Domains\Authorization\Actions\Query\ListUsers;
 use App\Domains\Authorization\Actions\Query\ShowRole;
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Contracts\LoginViewResponse;
 
-Route::inertia('/', 'Welcome')->name('home');
+// Guests get Fortify's login screen on the root, signed-in users are sent to the dashboard by the guest middleware.
+Route::get('/', fn () => app(LoginViewResponse::class))->middleware('guest')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');

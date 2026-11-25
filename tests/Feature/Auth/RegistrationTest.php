@@ -31,6 +31,7 @@ class RegistrationTest extends TestCase
         $response = $this->post(route('register.store'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'date_of_birth' => '2000-01-15',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
@@ -38,5 +39,19 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
         $this->assertTrue(User::firstWhere('email', 'test@example.com')->hasRole(SystemRole::Member->value));
+    }
+
+    public function test_registration_requires_a_past_date_of_birth()
+    {
+        $response = $this->post(route('register.store'), [
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'date_of_birth' => now()->addDay()->toDateString(),
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertSessionHasErrors('date_of_birth');
+        $this->assertGuest();
     }
 }
