@@ -13,7 +13,7 @@ enum GenerationStatus: string
     case Succeeded = 'succeeded';
     case Failed = 'failed';
 
-    /** Statuses that hold the chat. The partial unique index on generations lists the same values. */
+    /** Statuses that hold the chat, through the unique generations.active_chat_id. */
     public const array ACTIVE = ['pending', 'queued', 'processing'];
 
     public static function fromProvider(ProviderStatus $status): self

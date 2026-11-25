@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property string $id
  * @property string $chat_id
+ * @property string|null $active_chat_id
  * @property string $user_id
  * @property string|null $retry_of_id
  * @property string|null $client_request_id
@@ -67,6 +68,14 @@ class Generation extends Model
     protected $guarded = [];
 
     protected $attributes = ['status' => 'pending'];
+
+    /** Fills the unique active_chat_id, so the database allows one active generation per chat. */
+    protected static function booted(): void
+    {
+        static::saving(function (self $generation): void {
+            $generation->active_chat_id = $generation->status->isFinal() ? null : $generation->chat_id;
+        });
+    }
 
     protected function casts(): array
     {

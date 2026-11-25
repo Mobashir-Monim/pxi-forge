@@ -70,10 +70,10 @@ return new class extends Migration
             $table->timestamps();
 
             // A chat runs one generation at a time. The database enforces it, so two racing sends can't both get through.
-            // The column holds chat_id only while the generation is active, and a unique index ignores nulls. This works on
-            // MySQL and Postgres alike, where a partial index would only work on Postgres.
-            $table->char('active_chat_id', 26)->nullable()->unique()
-                ->storedAs("case when status in ('pending', 'queued', 'processing') then chat_id end");
+            // The model sets this to chat_id while the generation is active and null after, and a unique index ignores
+            // nulls. A partial index would only work on Postgres, and MySQL won't build a generated column from chat_id
+            // because of its cascading foreign key.
+            $table->char('active_chat_id', 26)->nullable()->unique();
 
             $table->index(['chat_id', 'created_at']);
             $table->index(['user_id', 'created_at']);
