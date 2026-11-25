@@ -1,21 +1,16 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import {
-    BookOpen,
-    FolderGit2,
-    LayoutGrid,
-    ShieldCheck,
-    Users,
-} from '@lucide/vue';
+import { ShieldCheck, SquarePen, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
+    SidebarGroup,
+    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -29,12 +24,11 @@ import type { NavItem } from '@/types';
 
 const can = useCan();
 
-const mainNavItems = computed<NavItem[]>(() => [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
+const mainNavItems: NavItem[] = [
+    { title: 'New image', href: dashboard(), icon: SquarePen },
+];
+
+const adminNavItems = computed<NavItem[]>(() => [
     ...(can('users.view')
         ? [{ title: 'Users', href: usersIndex(), icon: Users }]
         : []),
@@ -42,19 +36,6 @@ const mainNavItems = computed<NavItem[]>(() => [
         ? [{ title: 'Roles', href: rolesIndex(), icon: ShieldCheck }]
         : []),
 ]);
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
@@ -73,10 +54,22 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavMain
+                v-if="adminNavItems.length"
+                label="Admin"
+                :items="adminNavItems"
+            />
+
+            <!-- ponytail: empty until generations exist, then this lists the latest ones -->
+            <SidebarGroup class="group-data-[collapsible=icon]:hidden">
+                <SidebarGroupLabel>Recents</SidebarGroupLabel>
+                <p class="px-2 text-sm text-muted-foreground">
+                    Your images will show up here.
+                </p>
+            </SidebarGroup>
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>
