@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -70,6 +69,12 @@ return new class extends Migration
             $table->timestamp('timed_out_at')->nullable();
             $table->timestamps();
 
+            // A chat runs one generation at a time. The database enforces it, so two racing sends can't both get through.
+            // The column holds chat_id only while the generation is active, and a unique index ignores nulls. This works on
+            // MySQL and Postgres alike, where a partial index would only work on Postgres.
+            $table->char('active_chat_id', 26)->nullable()->unique()
+                ->storedAs("case when status in ('pending', 'queued', 'processing') then chat_id end");
+
             $table->index(['chat_id', 'created_at']);
             $table->index(['user_id', 'created_at']);
         });
@@ -78,9 +83,6 @@ return new class extends Migration
         Schema::table('generations', function (Blueprint $table) {
             $table->foreign('retry_of_id')->references('id')->on('generations')->nullOnDelete();
         });
-
-        // A chat runs one generation at a time. The database enforces it, so two racing sends can't both get through.
-        DB::statement("create unique index generations_one_active_per_chat on generations (chat_id) where status in ('pending', 'queued', 'processing')");
 
         Schema::create('webhook_events', function (Blueprint $table) {
             // The provider's event id. Unique, so an event delivered twice is recorded and applied once.

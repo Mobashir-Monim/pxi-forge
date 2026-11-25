@@ -13,6 +13,18 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # Postgres for local dev, MySQL for the Forge server.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: pgsql
+            port: 5432
+            user: postgres
+          - db: mysql
+            port: 3306
+            user: root
+
     services:
       postgres:
         image: postgres:17
@@ -27,11 +39,25 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: postgres
+          MYSQL_DATABASE: pxi_forge_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -ppostgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     # Job env beats .env and phpunit.xml, so setup and tests share one DB.
     env:
+      DB_CONNECTION: ${{ matrix.db }}
       DB_HOST: 127.0.0.1
-      DB_USERNAME: postgres
+      DB_PORT: ${{ matrix.port }}
+      DB_USERNAME: ${{ matrix.user }}
       DB_PASSWORD: postgres
       DB_DATABASE: pxi_forge_testing
 
