@@ -2,7 +2,9 @@
 
 An image generator built on the Pixelforge API for the PromptEdit take-home. Users write a prompt, see what it will cost, and watch it generate. They pay Pixelforge's cost plus 25%, from credits they buy through Stripe. Operators get a report of spend, provider cost and profit, reconciled against Pixelforge's own usage.
 
-Built with Laravel 13, Inertia 3, Vue 3, Tailwind 4 and Postgres. Server code is organised by domain (`app/Domains`) as [Laravel Actions](https://laravelactions.com), with external APIs behind adapters in `app/Services`.
+Live at https://pxi-forge.on-forge.com. Buy credits there with Stripe's test card 4242 4242 4242 4242, any future expiry date and any CVC.
+
+Built with Laravel 13, Inertia 3, Vue 3, Tailwind 4 and Postgres (MySQL 8.4 in production, CI runs on both). Server code is organised by domain (`app/Domains`) as [Laravel Actions](https://laravelactions.com), with external APIs behind adapters in `app/Services`.
 
 ## Running it
 
