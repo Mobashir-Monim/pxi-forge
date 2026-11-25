@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\ImageGeneration\Data\Pricing;
+use App\Services\ImageGeneration\Data\TokenRates;
 use Illuminate\Support\Str;
 
 return [
@@ -131,6 +133,10 @@ return [
     |
     */
 
-    'serializable_classes' => false,
+    // Plain readonly DTOs with no magic methods, so they can't be used as gadgets.
+    'serializable_classes' => [
+        Pricing::class,
+        TokenRates::class,
+    ],
 
 ];

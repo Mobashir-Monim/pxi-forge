@@ -10,6 +10,7 @@ use App\Services\ImageGeneration\Data\UsageDay;
 use App\Services\ImageGeneration\Enums\ImageGenerationProviders;
 use App\Services\Shared\ProviderRegistry;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 
 /** ImageGeneration service root, the public API the codebase calls. */
 final class ImageGenerationService
@@ -34,9 +35,16 @@ final class ImageGenerationService
         return $this->provider($using)->usage($from, $to);
     }
 
+    /**
+     * Current rates, cached for estimates only. Billing never uses these: each generation carries its own rates.
+     */
     public function pricing(?ImageGenerationProviders $using = null): Pricing
     {
-        return $this->provider($using)->pricing();
+        return Cache::remember(
+            'image-generation.pricing.'.($using->value ?? 'default'),
+            now()->addMinutes(10),
+            fn (): Pricing => $this->provider($using)->pricing(),
+        );
     }
 
     private function provider(?ImageGenerationProviders $using): ImageGenerator
