@@ -73,6 +73,22 @@ final class FakeImageGenerator implements ImageGenerator
         return Generation::fromArray($data);
     }
 
+    /** Test helper: the provider id created for this idempotency key. */
+    public static function idFor(string $idempotencyKey): string
+    {
+        return self::$keys[$idempotencyKey];
+    }
+
+    /**
+     * Test helper: the generation as it looked with these fields, without storing it. For stale, out-of-order events.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public static function snapshot(string $id, array $overrides): Generation
+    {
+        return Generation::fromArray([...self::$generations[$id], ...$overrides]);
+    }
+
     /** Test helper: finish a generation as succeeded with these token counts. */
     public static function complete(string $id, TokenUsage $usage): Generation
     {

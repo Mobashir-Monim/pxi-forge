@@ -17,6 +17,16 @@ enum Permission: string
     case UsersView = 'users.view';
     case UsersAssignRoles = 'users.assign-roles';
 
+    case ChatsView = 'chats.view';
+
+    case GenerationsCreate = 'generations.create';
+    case GenerationsRetry = 'generations.retry';
+
+    case ReferencesUpload = 'references.upload';
+
+    /** What every member can do from the start. Seeded once, editable after. */
+    public const array MEMBER_DEFAULTS = [self::ChatsView, self::GenerationsCreate, self::GenerationsRetry, self::ReferencesUpload];
+
     /** The heading this permission is listed under on the role form. */
     public function group(): string
     {
@@ -32,6 +42,10 @@ enum Permission: string
             self::RolesDelete => 'Delete roles',
             self::UsersView => 'View users',
             self::UsersAssignRoles => 'Assign roles to users',
+            self::ChatsView => 'View own chats',
+            self::GenerationsCreate => 'Generate images',
+            self::GenerationsRetry => 'Retry failed generations',
+            self::ReferencesUpload => 'Upload reference images',
         };
     }
 
@@ -44,6 +58,10 @@ enum Permission: string
             self::RolesDelete => 'Delete custom roles. Users holding one lose it.',
             self::UsersView => 'See the list of users and their roles.',
             self::UsersAssignRoles => 'Give roles to other users or take them away.',
+            self::ChatsView => 'Open their own chats and see each generation in them.',
+            self::GenerationsCreate => 'Send prompts to the image generator and see cost estimates. Each image is charged to them.',
+            self::GenerationsRetry => 'Send a failed generation again with the same settings.',
+            self::ReferencesUpload => 'Upload images from their device to use as references.',
         };
     }
 

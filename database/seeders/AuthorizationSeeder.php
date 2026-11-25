@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Domains\Authorization\Actions\Command\SyncAuthorizationCatalog;
 use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Authorization\Enums\SystemRole;
 use App\Domains\Authorization\Models\Role;
 use Illuminate\Database\Seeder;
 
@@ -25,6 +26,13 @@ class AuthorizationSeeder extends Seeder
                 fn (Permission $permission): string => $permission->value,
                 array_filter(Permission::cases(), fn (Permission $permission): bool => ! in_array($permission, self::ADMIN_EXCLUDED, true)),
             ));
+        }
+
+        // Member is a system role the catalog sync creates, so "first seed" means it holds nothing yet.
+        $member = Role::findByName(SystemRole::Member->value, 'web');
+
+        if ($member->permissions()->doesntExist()) {
+            $member->syncPermissions(array_map(fn (Permission $permission): string => $permission->value, Permission::MEMBER_DEFAULTS));
         }
     }
 }

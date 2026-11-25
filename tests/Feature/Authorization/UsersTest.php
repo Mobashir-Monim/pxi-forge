@@ -18,7 +18,8 @@ it('lists users for anyone who may view them', function () {
 });
 
 it('assigns roles within the actor reach', function () {
-    $actor = userWith(Permission::UsersAssignRoles, Permission::UsersView);
+    // Member grants the generating permissions, so the actor needs them too to hand it out.
+    $actor = userWith(Permission::UsersAssignRoles, Permission::UsersView, ...Permission::MEMBER_DEFAULTS);
     $target = User::factory()->create();
     $member = Role::findByName(SystemRole::Member->value);
 

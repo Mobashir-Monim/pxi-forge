@@ -2,12 +2,13 @@
 
 namespace App\Domains\Generation\Actions\Query;
 
+use App\Domains\Authorization\Enums\Permission;
+use App\Domains\Generation\Support\Money;
 use App\Services\ImageGeneration\Enums\ImageQuality;
 use App\Services\ImageGeneration\Enums\ImageSize;
 use App\Services\ImageGeneration\ImageGenerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
-use InvalidArgumentException;
 use Lorisleiva\Actions\ActionRequest;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -20,11 +21,14 @@ final class EstimateGenerationCost
 {
     use AsAction;
 
-    public const int MARKUP_PERCENT = 125;
-
     public const int MAX_REFERENCE_IMAGES = 4;
 
     public function __construct(private readonly ImageGenerationService $images) {}
+
+    public function authorize(ActionRequest $request): bool
+    {
+        return $request->user()->can(Permission::GenerationsCreate->value);
+    }
 
     /**
      * @return array{min: int, max: int}
@@ -39,20 +43,20 @@ final class EstimateGenerationCost
         $reasoning = $tokens['reasoning'][$quality->value];
 
         // Exact for every token count, so it's the same at both ends of the range.
-        $fixed = $referenceImages * $tokens['per_reference_image'] * self::perMillion($pricing->rates->inputImage)
-            + $tokens['output'][$quality->value][$size->value] * self::perMillion($pricing->rates->output);
+        $fixed = $referenceImages * $tokens['per_reference_image'] * Money::perMillion($pricing->rates->inputImage)
+            + $tokens['output'][$quality->value][$size->value] * Money::perMillion($pricing->rates->output);
 
         // Rounded outward, so the real count always lands inside the range.
         $minText = intdiv($text * (10_000 - $varianceBp), 10_000);
-        $maxText = self::ceilDiv($text * (10_000 + $varianceBp), 10_000);
+        $maxText = Money::ceilDiv($text * (10_000 + $varianceBp), 10_000);
 
         return [
             'min' => self::charge($fixed
-                + $minText * self::perMillion($pricing->rates->inputText)
-                + $reasoning['min'] * self::perMillion($pricing->rates->reasoning)),
+                + $minText * Money::perMillion($pricing->rates->inputText)
+                + $reasoning['min'] * Money::perMillion($pricing->rates->reasoning)),
             'max' => self::charge($fixed
-                + $maxText * self::perMillion($pricing->rates->inputText)
-                + $reasoning['max'] * self::perMillion($pricing->rates->reasoning)),
+                + $maxText * Money::perMillion($pricing->rates->inputText)
+                + $reasoning['max'] * Money::perMillion($pricing->rates->reasoning)),
         ];
     }
 
@@ -79,31 +83,8 @@ final class EstimateGenerationCost
         ));
     }
 
-    /**
-     * A "USD per 1M tokens" decimal string as integer nanodollars per 1M tokens, so "12.50" is 12,500,000,000. Parsed
-     * from the string, never through a float.
-     */
-    private static function perMillion(string $rate): int
-    {
-        if (preg_match('/^(\d+)(?:\.(\d{1,9}))?$/', $rate, $m) !== 1) {
-            throw new InvalidArgumentException("Unreadable token rate: {$rate}");
-        }
-
-        return (int) $m[1] * 1_000_000_000 + (int) str_pad($m[2] ?? '', 9, '0');
-    }
-
-    /**
-     * Pixelforge's cost (summed as nanodollars per 1M tokens × tokens) plus the markup, in nanodollars.
-     * ponytail: rounds up to the next nanodollar, exact with today's rates. A rate with more decimals than they have
-     * would make this round, always in our favour by under $0.000000001.
-     */
     private static function charge(int $perMillionTotal): int
     {
-        return self::ceilDiv($perMillionTotal * self::MARKUP_PERCENT, 100 * 1_000_000);
-    }
-
-    private static function ceilDiv(int $a, int $b): int
-    {
-        return intdiv($a + $b - 1, $b);
+        return Money::charge(Money::fromPerMillion($perMillionTotal));
     }
 }

@@ -22,4 +22,15 @@ final class TokenRates
             reasoning: (string) $data['reasoning_tokens'],
         );
     }
+
+    /** @return array{input_text_tokens: string, input_image_tokens: string, output_tokens: string, reasoning_tokens: string} */
+    public function toArray(): array
+    {
+        return [
+            'input_text_tokens' => $this->inputText,
+            'input_image_tokens' => $this->inputImage,
+            'output_tokens' => $this->output,
+            'reasoning_tokens' => $this->reasoning,
+        ];
+    }
 }

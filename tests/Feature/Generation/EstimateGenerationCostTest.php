@@ -1,7 +1,7 @@
 <?php
 
+use App\Domains\Authorization\Enums\Permission;
 use App\Domains\Generation\Actions\Query\EstimateGenerationCost;
-use App\Models\User;
 use App\Services\ImageGeneration\Enums\ImageQuality;
 use App\Services\ImageGeneration\Enums\ImageSize;
 
@@ -24,15 +24,15 @@ test('counts prompt characters, not bytes, and rounds the text range outward', f
     expect($estimate)->toBe(['min' => (int) $min, 'max' => (int) $max]);
 });
 
-test('serves the estimate to signed-in users as JSON', function () {
-    $this->actingAs(User::factory()->create())
+test('serves the estimate to users who can generate, as JSON', function () {
+    $this->actingAs(userWith(Permission::GenerationsCreate))
         ->getJson(route('generations.estimate', ['prompt' => 'a fox', 'size' => '1024x1024', 'quality' => 'medium', 'reference_images' => 1]))
         ->assertOk()
         ->assertJsonStructure(['min', 'max']);
 });
 
 test('rejects more reference images than Pixelforge accepts, and unknown sizes', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(userWith(Permission::GenerationsCreate))
         ->getJson(route('generations.estimate', ['size' => '512x512', 'quality' => 'medium', 'reference_images' => 5]))
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['size', 'reference_images']);
@@ -48,4 +48,10 @@ test('reads cached pricing back from the database cache', function () {
     EstimateGenerationCost::run('a fox', ImageSize::Square, ImageQuality::Medium, 0);
 
     expect(EstimateGenerationCost::run('a fox', ImageSize::Square, ImageQuality::Medium, 0))->toHaveKeys(['min', 'max']);
+});
+
+test('refuses the estimate to users who can\'t generate', function () {
+    $this->actingAs(userWith())
+        ->getJson(route('generations.estimate', ['prompt' => 'a fox', 'size' => '1024x1024', 'quality' => 'medium', 'reference_images' => 0]))
+        ->assertForbidden();
 });
