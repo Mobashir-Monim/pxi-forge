@@ -4,6 +4,8 @@ use App\Services\ImageGeneration\Providers\FakeImageGenerator;
 use App\Services\ImageGeneration\Providers\PixelforgeImageGenerator;
 use App\Services\Payment\Providers\FakePaymentGateway;
 use App\Services\Payment\Providers\StripePaymentGateway;
+use App\Services\SocialAuth\Providers\GitHubIdentityProvider;
+use App\Services\SocialAuth\Providers\GoogleIdentityProvider;
 
 /*
  * External services: each capability maps a default provider key to its adapter class.
@@ -26,6 +28,15 @@ return [
         'providers' => [
             'fake' => FakePaymentGateway::class,
             'stripe' => StripePaymentGateway::class,
+        ],
+    ],
+
+    // Social sign-in. Stubs for now: every call refuses until the adapters are built. The user picks the provider, so the default is unused.
+    'socialAuth' => [
+        'default' => 'google',
+        'providers' => [
+            'google' => GoogleIdentityProvider::class,
+            'github' => GitHubIdentityProvider::class,
         ],
     ],
 
