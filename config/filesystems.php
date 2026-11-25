@@ -43,7 +43,8 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
-            'throw' => false,
+            // LocalObjectStore relies on the throw, same as the s3 disk.
+            'throw' => true,
             'report' => false,
         ],
 

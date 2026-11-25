@@ -15,12 +15,14 @@ use Throwable;
  * Any S3-compatible store (AWS S3, R2, Spaces, MinIO) through the `s3` disk; AWS_ENDPOINT picks which.
  * Relies on the disk's `throw`: without it a rejected write returns false and reads as success.
  */
-final class S3ObjectStore implements ObjectStore
+class S3ObjectStore implements ObjectStore
 {
+    protected string $disk = 's3';
+
     private function disk(): FilesystemAdapter
     {
         /** @var FilesystemAdapter */
-        return Storage::disk('s3');
+        return Storage::disk($this->disk);
     }
 
     public function put(string $key, string $contents, ?string $mime = null): StoredObject

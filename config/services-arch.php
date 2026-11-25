@@ -3,6 +3,7 @@
 use App\Services\ImageGeneration\Providers\FakeImageGenerator;
 use App\Services\ImageGeneration\Providers\PixelforgeImageGenerator;
 use App\Services\ObjectStore\Providers\FakeObjectStore;
+use App\Services\ObjectStore\Providers\LocalObjectStore;
 use App\Services\ObjectStore\Providers\S3ObjectStore;
 use App\Services\Payment\Providers\FakePaymentGateway;
 use App\Services\Payment\Providers\StripePaymentGateway;
@@ -42,12 +43,13 @@ return [
         ],
     ],
 
-    // Durable blobs on any S3-compatible store.
+    // Durable blobs on any S3-compatible store, or the public disk for local dev.
     'objectStore' => [
         'default' => env('OBJECT_STORE_PROVIDER', 's3'),
         'providers' => [
             'fake' => FakeObjectStore::class,
             's3' => S3ObjectStore::class,
+            'local' => LocalObjectStore::class,
         ],
     ],
 

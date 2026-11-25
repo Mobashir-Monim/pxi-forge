@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 it('stores, lists, reads and deletes a blob', function (ObjectStoreProviders $provider) {
     Storage::fake('s3');
+    Storage::fake('public');
     $store = app(ObjectStoreService::class);
 
     $stored = $store->put('images/a.png', 'png-bytes', 'image/png', $provider);

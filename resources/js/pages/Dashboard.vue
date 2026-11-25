@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { Head, router, usePoll } from '@inertiajs/vue3';
+import { Head, router, setLayoutProps, usePoll } from '@inertiajs/vue3';
 import { useDropZone } from '@vueuse/core';
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    reactive,
+    ref,
+    watch,
+    watchEffect,
+} from 'vue';
 import { toast } from 'vue-sonner';
 import AnnotateImage from '@/components/generate/AnnotateImage.vue';
 import GenerationTurn from '@/components/generate/GenerationTurn.vue';
@@ -25,6 +33,7 @@ import {
 } from '@/lib/prompt';
 import { ulid } from '@/lib/ulid';
 import { dashboard } from '@/routes';
+import { show as showChat } from '@/routes/chats';
 import { store as sendInChat } from '@/routes/chats/generations';
 import {
     retry as retryRoute,
@@ -49,6 +58,14 @@ defineOptions({
     layout: {
         breadcrumbs: [{ title: 'New image', href: dashboard() }],
     },
+});
+
+watchEffect(() => {
+    setLayoutProps({
+        breadcrumbs: props.chat
+            ? [{ title: props.chat.title, href: showChat(props.chat.id) }]
+            : [{ title: 'New image', href: dashboard() }],
+    });
 });
 
 /** Pixelforge's limit per generation. */
