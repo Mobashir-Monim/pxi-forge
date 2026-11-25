@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Services\ImageGeneration\Providers\FakeImageGenerator;
 use Database\Seeders\AuthorizationSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Laravel\Fortify\Features;
@@ -12,6 +13,14 @@ abstract class TestCase extends BaseTestCase
     protected bool $seed = true;
 
     protected string $seeder = AuthorizationSeeder::class;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Fake adapters keep state in statics, so each test starts clean.
+        FakeImageGenerator::flush();
+    }
 
     protected function skipUnlessFortifyHas(string $feature, ?string $message = null): void
     {
