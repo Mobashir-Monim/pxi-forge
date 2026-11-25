@@ -1,14 +1,25 @@
 <script setup lang="ts">
 import { ImagePlus, X } from '@lucide/vue';
-import { RadioGroupItem, RadioGroupRoot } from 'reka-ui';
-import { ref } from 'vue';
+import { useDropZone } from '@vueuse/core';
+import {
+    RadioGroupItem,
+    RadioGroupRoot,
+    SliderRange,
+    SliderRoot,
+    SliderThumb,
+    SliderTrack,
+} from 'reka-ui';
+import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { hasImages, onlyImages } from '@/lib/files';
 import type { ImageQuality, ImageSize, ReferenceImage } from '@/types';
 
 const props = defineProps<{
     references: ReferenceImage[];
     maxReferences: number;
+    /** A file is being dragged somewhere over the browser window. */
+    dragging: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,10 +31,30 @@ const emit = defineEmits<{
 const size = defineModel<ImageSize>('size', { required: true });
 const quality = defineModel<ImageQuality>('quality', { required: true });
 
-const sizes: { value: ImageSize; label: string; shape: string }[] = [
-    { value: '1024x1024', label: 'Square', shape: 'w-5 h-5' },
-    { value: '1536x1024', label: 'Landscape', shape: 'w-6 h-4' },
-    { value: '1024x1536', label: 'Portrait', shape: 'w-4 h-6' },
+const sizes: {
+    value: ImageSize;
+    label: string;
+    description: string;
+    shape: string;
+}[] = [
+    {
+        value: '1024x1024',
+        label: 'Square',
+        description: 'Even framing for avatars, icons and social posts.',
+        shape: 'size-6',
+    },
+    {
+        value: '1536x1024',
+        label: 'Landscape',
+        description: 'Wide framing for scenes, banners and wallpapers.',
+        shape: 'h-5 w-7',
+    },
+    {
+        value: '1024x1536',
+        label: 'Portrait',
+        description: 'Tall framing for people, posters and phone screens.',
+        shape: 'h-7 w-5',
+    },
 ];
 
 const qualities: { value: ImageQuality; label: string }[] = [
@@ -32,8 +63,19 @@ const qualities: { value: ImageQuality; label: string }[] = [
     { value: 'high', label: 'High' },
 ];
 
-const optionClass =
-    'rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-accent';
+// The slider works in steps 0..2, the draft in quality names.
+const qualityStep = computed({
+    get: () => [qualities.findIndex((q) => q.value === quality.value)],
+    set: ([step]) => (quality.value = qualities[step].value),
+});
+
+const full = computed(() => props.references.length >= props.maxReferences);
+
+const dropZone = ref<HTMLButtonElement>();
+const { isOverDropZone } = useDropZone(dropZone, {
+    dataTypes: hasImages,
+    onDrop: (files) => emit('files', onlyImages(files)),
+});
 
 const fileInput = ref<HTMLInputElement>();
 const url = ref('');
@@ -59,7 +101,7 @@ function addUrl(): void {
 
 function onPick(event: Event): void {
     const input = event.target as HTMLInputElement;
-    emit('files', Array.from(input.files ?? []));
+    emit('files', onlyImages(input.files));
     input.value = '';
 }
 </script>
@@ -70,46 +112,66 @@ function onPick(event: Event): void {
             <h3 class="mb-2 text-sm font-medium">Size</h3>
             <RadioGroupRoot
                 v-model="size"
-                class="grid grid-cols-3 gap-2"
+                class="flex flex-col gap-2"
                 aria-label="Size"
             >
                 <RadioGroupItem
                     v-for="item in sizes"
                     :key="item.value"
                     :value="item.value"
-                    :class="[optionClass, 'flex flex-col items-center gap-1.5']"
+                    class="flex h-[92px] w-full items-center gap-3 rounded-lg border px-3 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=checked]:border-primary data-[state=checked]:bg-accent"
                 >
-                    <span class="flex h-6 items-center">
+                    <span
+                        class="flex size-10 shrink-0 items-center justify-center"
+                    >
                         <span
                             class="rounded-[3px] border-2 border-current"
                             :class="item.shape"
                         />
                     </span>
-                    <span>{{ item.label }}</span>
-                    <span class="text-[11px] text-muted-foreground">{{
-                        item.value
-                    }}</span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-medium">{{
+                            item.label
+                        }}</span>
+                        <span
+                            class="block text-xs text-muted-foreground tabular-nums"
+                            >{{ item.value }}</span
+                        >
+                        <span
+                            class="mt-1 line-clamp-2 block text-xs text-muted-foreground"
+                            >{{ item.description }}</span
+                        >
+                    </span>
                 </RadioGroupItem>
             </RadioGroupRoot>
         </section>
 
         <section>
-            <h3 class="mb-2 text-sm font-medium">Quality</h3>
-            <RadioGroupRoot
-                v-model="quality"
-                class="grid grid-cols-3 gap-2"
-                aria-label="Quality"
+            <div class="mb-3 flex items-center justify-between">
+                <h3 id="quality-label" class="text-sm font-medium">Quality</h3>
+                <span class="text-sm text-muted-foreground">{{
+                    qualities[qualityStep[0]].label
+                }}</span>
+            </div>
+            <SliderRoot
+                v-model="qualityStep"
+                :min="0"
+                :max="qualities.length - 1"
+                :step="1"
+                class="relative flex h-5 w-full touch-none items-center select-none"
             >
-                <RadioGroupItem
-                    v-for="item in qualities"
-                    :key="item.value"
-                    :value="item.value"
-                    :class="optionClass"
+                <SliderTrack
+                    class="relative h-1.5 grow overflow-hidden rounded-full bg-muted"
                 >
-                    {{ item.label }}
-                </RadioGroupItem>
-            </RadioGroupRoot>
-            <p class="mt-2 text-xs text-muted-foreground">
+                    <SliderRange class="absolute h-full bg-primary" />
+                </SliderTrack>
+                <SliderThumb
+                    aria-labelledby="quality-label"
+                    :aria-valuetext="qualities[qualityStep[0]].label"
+                    class="block size-4 rounded-full border-2 border-primary bg-background shadow-sm transition-[box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                />
+            </SliderRoot>
+            <p class="mt-3 text-xs text-muted-foreground">
                 Higher quality takes longer and costs more.
             </p>
         </section>
@@ -129,7 +191,7 @@ function onPick(event: Event): void {
                 <li
                     v-for="(reference, index) in props.references"
                     :key="reference.id"
-                    class="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
+                    class="group relative aspect-square animate-in overflow-hidden rounded-lg border bg-muted zoom-in-95 fade-in"
                 >
                     <img
                         :src="reference.src"
@@ -151,31 +213,58 @@ function onPick(event: Event): void {
                     </button>
                 </li>
             </ul>
-            <p v-else class="mb-3 text-xs text-muted-foreground">
-                Add up to {{ props.maxReferences }} images to guide the style.
-                Mention them in your prompt by number, like "colors from 1".
-                Each one adds a little to the cost.
-            </p>
 
-            <template v-if="props.references.length < props.maxReferences">
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    class="w-full"
-                    @click="fileInput?.click()"
-                >
-                    <ImagePlus /> Upload images
-                </Button>
-                <input
-                    ref="fileInput"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    hidden
-                    @change="onPick"
+            <button
+                ref="dropZone"
+                type="button"
+                :disabled="full"
+                class="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-all duration-200 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                :class="
+                    isOverDropZone
+                        ? 'scale-[1.02] border-primary bg-primary/10'
+                        : props.dragging
+                          ? 'border-primary/60 bg-primary/5'
+                          : 'hover:border-muted-foreground/40 hover:bg-accent/50'
+                "
+                @click="fileInput?.click()"
+            >
+                <ImagePlus
+                    class="size-5 transition-colors"
+                    :class="
+                        props.dragging
+                            ? 'text-primary motion-safe:animate-bounce'
+                            : 'text-muted-foreground'
+                    "
                 />
+                <span class="text-sm font-medium">
+                    {{
+                        full
+                            ? `All ${props.maxReferences} slots used`
+                            : isOverDropZone
+                              ? 'Drop to add'
+                              : props.dragging
+                                ? 'Drop images here'
+                                : 'Drop images or click to upload'
+                    }}
+                </span>
+                <span class="text-xs text-muted-foreground">
+                    {{
+                        full
+                            ? 'Remove one to add another.'
+                            : 'Paste or drop them on the prompt too.'
+                    }}
+                </span>
+            </button>
+            <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                @change="onPick"
+            />
 
+            <template v-if="!full">
                 <form class="mt-2 flex gap-2" @submit.prevent="addUrl">
                     <Input
                         v-model="url"

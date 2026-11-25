@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { useDropZone } from '@vueuse/core';
 import { onBeforeUnmount, reactive, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import GenerationSettings from '@/components/generate/GenerationSettings.vue';
@@ -12,6 +13,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { useCostEstimate } from '@/composables/useCostEstimate';
+import { hasImages } from '@/lib/files';
 import { dashboard } from '@/routes';
 import type { GenerationDraft, ReferenceImage } from '@/types';
 
@@ -33,6 +35,13 @@ const draft = reactive<GenerationDraft>({
 
 const settingsOpen = ref(false);
 const { estimate, loading } = useCostEstimate(draft);
+
+// Lights up every drop zone while an image is dragged anywhere over the page, and stops a drop that misses them from
+// opening the file in place of the app.
+const { isOverDropZone: draggingFile } = useDropZone(
+    () => (typeof document === 'undefined' ? null : document.documentElement),
+    { dataTypes: hasImages, preventDefaultForUnhandled: true },
+);
 
 let nextId = 1;
 
@@ -103,6 +112,7 @@ function submit(): void {
                     :loading="loading"
                     :reference-count="draft.references.length"
                     :max-references="MAX_REFERENCES"
+                    :dragging="draggingFile"
                     @files="addFiles"
                     @submit="submit"
                     @open-settings="settingsOpen = true"
@@ -119,6 +129,7 @@ function submit(): void {
                 v-model:quality="draft.quality"
                 :references="draft.references"
                 :max-references="MAX_REFERENCES"
+                :dragging="draggingFile"
                 @files="addFiles"
                 @url="addUrl"
                 @remove="removeReference"
@@ -139,6 +150,7 @@ function submit(): void {
                         v-model:quality="draft.quality"
                         :references="draft.references"
                         :max-references="MAX_REFERENCES"
+                        :dragging="draggingFile"
                         @files="addFiles"
                         @url="addUrl"
                         @remove="removeReference"

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ArrowUp, ImagePlus, SlidersHorizontal } from '@lucide/vue';
-import { useTextareaAutosize } from '@vueuse/core';
+import { useDropZone, useTextareaAutosize } from '@vueuse/core';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { formatEstimate } from '@/composables/useCostEstimate';
+import { hasImages, onlyImages } from '@/lib/files';
 import type { CostEstimate } from '@/types';
 
 const props = defineProps<{
@@ -11,6 +12,8 @@ const props = defineProps<{
     loading: boolean;
     referenceCount: number;
     maxReferences: number;
+    /** A file is being dragged somewhere over the browser window. */
+    dragging: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -23,6 +26,12 @@ const prompt = defineModel<string>({ required: true });
 
 const { textarea } = useTextareaAutosize({ input: prompt });
 const fileInput = ref<HTMLInputElement>();
+
+const form = ref<HTMLFormElement>();
+const { isOverDropZone } = useDropZone(form, {
+    dataTypes: hasImages,
+    onDrop: (files) => emit('files', onlyImages(files)),
+});
 
 const canSubmit = computed(() => prompt.value.trim() !== '');
 
@@ -40,14 +49,8 @@ function onEnter(event: KeyboardEvent): void {
     }
 }
 
-function images(list: FileList | null | undefined): File[] {
-    return Array.from(list ?? []).filter((file) =>
-        file.type.startsWith('image/'),
-    );
-}
-
 function onPaste(event: ClipboardEvent): void {
-    const files = images(event.clipboardData?.files);
+    const files = onlyImages(event.clipboardData?.files);
 
     if (files.length > 0) {
         event.preventDefault();
@@ -57,7 +60,7 @@ function onPaste(event: ClipboardEvent): void {
 
 function onPick(event: Event): void {
     const input = event.target as HTMLInputElement;
-    emit('files', images(input.files));
+    emit('files', onlyImages(input.files));
     input.value = '';
 }
 </script>
@@ -65,11 +68,31 @@ function onPick(event: Event): void {
 <template>
     <div class="w-full">
         <form
-            class="rounded-3xl border bg-card p-3 shadow-sm transition-colors focus-within:border-ring"
+            ref="form"
+            class="relative rounded-3xl border bg-card p-3 shadow-sm transition-all duration-200 focus-within:border-ring"
+            :class="{
+                'border-dashed border-primary/60': props.dragging,
+                'scale-[1.01] border-primary': isOverDropZone,
+            }"
             @submit.prevent="submit"
-            @dragover.prevent
-            @drop.prevent="emit('files', images($event.dataTransfer?.files))"
         >
+            <div
+                class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-3xl text-sm font-medium transition-opacity duration-200"
+                :class="[
+                    props.dragging ? 'opacity-100' : 'opacity-0',
+                    isOverDropZone ? 'bg-card/95 text-primary' : 'bg-card/90',
+                ]"
+                aria-hidden="true"
+            >
+                <ImagePlus
+                    class="size-5 text-primary motion-safe:animate-bounce"
+                />
+                {{
+                    isOverDropZone
+                        ? 'Drop to add as references'
+                        : 'Drop images here'
+                }}
+            </div>
             <textarea
                 ref="textarea"
                 v-model="prompt"
